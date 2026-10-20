@@ -1,0 +1,9 @@
+{
+  "room1-ac": {"kind": "ac", "enabled": false, "actions": ["setpoint"], "approved_firmware": ""},
+  "entry-camera": {"kind": "camera", "enabled": false, "actions": ["recording"]},
+  "entry-door": {"kind": "door", "enabled": false, "actions": ["lock"]},
+  "lobby-plug": {"kind": "plug", "enabled": false, "actions": ["power"], "max_power_w": 2000},
+  "lobby-light": {"kind": "light", "enabled": false, "actions": ["power", "brightness"]},
+  "lobby-fan": {"kind": "fan", "enabled": false, "actions": ["power", "speed"]},
+  "safety-sensor": {"kind": "sensor", "enabled": false, "actions": []}
+}

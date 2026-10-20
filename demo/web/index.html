@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en" data-band="BLUE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0d0c0b">
+<title>ReWatch IoT</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/rewatch.css">
+<link rel="stylesheet" href="assets/devices.css">
+</head>
+<body>
+
+<!-- ═══════════════════════ lock screen (passkey) ═══════════════════════ -->
+<section id="lock" aria-label="Sign in">
+  <div class="lk-left">
+    <div class="wordmark">Re<b>Watch</b><sup>IOT</sup></div>
+    <p class="tag">Detect, score, alert and respond — on the IoT layer of your own building.</p>
+    <button class="btn-pk" id="lk-unlock" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 11c0 3.5-1 6.5-2.6 8.6M8.2 8.6A4.5 4.5 0 0 1 16.5 11c0 1.2-.1 2.4-.3 3.5M5.6 6.4A8 8 0 0 1 20 11c0 2.3-.3 4.3-.8 6M4 10.5c-.1 2.6-.6 4.9-1.5 6.5M12 14.5c-.2 2.3-.8 4.4-1.7 6M15.7 17.5c-.3 1.2-.6 2.2-1.1 3.2"/></svg>
+      <span id="lk-label">UNLOCK WITH PASSKEY</span>
+    </button>
+    <div class="lk-alt">
+      <button type="button" id="lk-show-reg">First time? Register this device</button>
+      <button type="button" id="lk-show-code">Use access code</button>
+    </div>
+    <form class="lk-form" id="lk-reg" hidden autocomplete="off">
+      <input id="lk-token" placeholder="enrolment code from start.sh" aria-label="Enrolment code">
+      <button type="submit">Register</button>
+    </form>
+    <form class="lk-form" id="lk-code" hidden autocomplete="off">
+      <input id="lk-code-in" placeholder="access code" inputmode="numeric" aria-label="Access code">
+      <button type="submit">Enter</button>
+    </form>
+    <div class="lk-msg" id="lk-msg" role="status"></div>
+    <div class="lk-facts">
+      <span>Local recording demo</span><span>Synthetic IoT evidence</span><span>2 × Pi 3 · Pi 4 · 2 × ESP32 design</span>
+    </div>
+  </div>
+  <div class="lk-right" aria-hidden="true">
+    <div class="lk-scan"></div>
+    <svg viewBox="0 0 760 420" fill="none" stroke="#3a332c" stroke-width="1.3">
+      <g font-family="JetBrains Mono, monospace" font-size="11" fill="#a0937f" stroke="none">
+        <text x="330" y="44">ROUTER</text><text x="314" y="134">8-PORT SWITCH</text>
+        <text x="58" y="266">PI 3 · SENTINEL</text><text x="58" y="282" fill="#6f6354">detect · usb log</text>
+        <text x="300" y="266">PI 4 · CORE</text><text x="300" y="282" fill="#6f6354">threat engine</text>
+        <text x="540" y="266">PI 3 · HERALD</text><text x="540" y="282" fill="#6f6354">smtp alerts</text>
+        <text x="300" y="384">ESP32-C3 · OLED</text><text x="540" y="384">ESP32 · ROOMS 1–4</text>
+      </g>
+      <rect x="300" y="20" width="160" height="40" rx="6"/><rect x="280" y="110" width="200" height="40" rx="6"/>
+      <path d="M380 60v50"/><path d="M320 150C320 200 150 200 150 240M380 150v90M440 150c0 50 170 50 170 90"/>
+      <rect x="40" y="240" width="200" height="54" rx="6"/><rect x="280" y="240" width="200" height="54" rx="6"/><rect x="520" y="240" width="200" height="54" rx="6"/>
+      <path d="M380 294v62"/><rect x="280" y="356" width="200" height="40" rx="6"/>
+      <rect x="520" y="356" width="200" height="40" rx="6" stroke-dasharray="4 4"/>
+      <path d="M470 270c40 0 40 100 50 100" stroke-dasharray="3 5"/>
+      <circle cx="456" cy="376" r="5" fill="var(--accent)" stroke="none" class="fp-pulse"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ dashboard ═══════════════════════════ -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="wordmark">Re<b>Watch</b></div>
+    <span class="pill connecting" id="conn"><i></i><span>CONNECTING</span></span>
+    <span class="pill bandpill" id="bandpill"><i></i><span>—</span></span>
+    <span class="sp"></span>
+    <nav class="toplinks">
+      <a href="reports.html">Reports · 5h</a>
+      <a href="manual.html">Manual</a>
+      <a href="debug.html">Debug</a>
+      <button type="button" id="lock-btn">Lock</button>
+    </nav>
+    <span class="clock" id="clock">--:--:--</span>
+  </header>
+
+  <main class="grid">
+    <!-- risk / threat engine -->
+    <section class="panel p-risk" aria-label="Threat engine">
+      <h2>Threat engine <small id="risk-sub">score 0–100</small></h2>
+      <div class="risk-head">
+        <div class="score" id="score">—<small>/100</small></div>
+        <div>
+          <div class="bandword" id="bandword">—</div>
+        </div>
+      </div>
+      <div class="reason" id="reason">Waiting for the Pi 4 threat engine…</div>
+      <div class="gwrap"><canvas id="graph"></canvas><span class="gleg" id="gleg">last 10 min</span></div>
+      <div class="engine" aria-label="Risk engine contributions">
+        <div class="eh"><span>Risk engine · live inputs</span><span id="eng-meta">½-life 60 s</span></div>
+        <div class="contrib" id="contrib"></div>
+        <div class="scale" id="scale"><b style="width:30%;background:var(--green)"></b><b style="width:40%;background:var(--yellow)"></b><b style="width:30%;background:var(--red)"></b><span class="needle" id="needle" style="left:0"></span></div>
+        <div class="scale-l"><span>0 green</span><span>30 yellow</span><span>70 red</span><span>100</span></div>
+      </div>
+    </section>
+
+    <!-- incident + indicator twin -->
+    <section class="panel p-inc" aria-label="Incident response">
+      <h2>Incident response <span class="sp"></span><small id="inc-id"></small></h2>
+      <div id="inc"></div>
+      <div class="hw">
+        <div class="oled" title="Live twin of the ESP32-C3 OLED panel"><canvas id="oled" width="128" height="64"></canvas></div>
+        <div class="hw-meta">
+          <span><b>ESP32-C3 mini</b> · OLED + NeoPixel</span>
+          <span class="neo"><i id="neo"></i><span id="neo-word">—</span></span>
+          <span class="mono dim" id="hw-link">USB serial · 115200</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- topology -->
+    <section class="panel p-topo" aria-label="IoT topology">
+      <h2>IoT topology <small id="topo-sub">logical relationships</small></h2>
+      <p id="device-status" role="status">Loading device policy…</p>
+      <div class="topology-layout"><div id="inventory-map" aria-label="Selectable IoT devices"></div><aside id="device-detail" aria-label="Selected device"></aside></div>
+    </section>
+
+    <!-- rooms -->
+    <section class="panel" aria-label="IoT devices">
+      <h2>Rooms · AC controllers <span class="sp"></span><small id="rooms-sub"></small></h2>
+      <div class="rooms" id="rooms"></div>
+    </section>
+
+    <!-- events -->
+    <section class="panel" aria-label="Alerts and events">
+      <h2>Alerts &amp; events <span class="sp"></span><small id="ev-count"></small></h2>
+      <div class="chips" id="chips">
+        <button type="button" data-f="all" class="on">All</button>
+        <button type="button" data-f="detect">Detections</button>
+        <button type="button" data-f="incident">Incidents</button>
+        <button type="button" data-f="mail">E-mail</button>
+        <button type="button" data-f="system">System</button>
+      </div>
+      <ul class="feed" id="feed"></ul>
+    </section>
+
+    <!-- fleet -->
+    <section class="panel" aria-label="Fleet">
+      <h2>Fleet <span class="sp"></span><small id="fleet-sub"></small></h2>
+      <div class="fleet" id="fleet"></div>
+      <div class="ctrls" id="ctrls">
+        <button class="btn" type="button" id="c-mail">Send test e-mail</button>
+        <button class="btn" type="button" id="c-spike">Simulate: Room 1 AC spike</button>
+        <button class="btn" type="button" id="c-reset">Simulate: restore setpoints</button>
+        <button class="btn" type="button" id="c-replay">Replay recording sequence</button>
+        <button class="btn" type="button" id="c-blackhat" aria-pressed="false">Black Hat feed: OFF</button>
+        <button class="btn" type="button" id="c-firmware">Simulate firmware metadata change</button>
+        <p id="c-note">SIMULATION · Start/replay: devices at 20 s → AC spike at 30 s → RED → 20 s to acknowledge. Refresh reconnects; Replay resets the shared scene, not saved reports. Black Hat feed is synthetic.</p>
+        <p id="mail-status" role="status">E-mail previews only unless local SMTP is enabled. System summaries every 5 minutes.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="strip">
+    <span><b id="f-events">0</b> events · 5 h</span>
+    <span><b id="f-open">0</b> open incident</span>
+    <span>bus <b id="f-rate">0</b> msg/s</span>
+    <span class="sp"></span>
+    <span id="f-ver">ReWatch IoT</span>
+  </footer>
+</div>
+
+<div id="flash"></div>
+<div id="toast" aria-live="polite"></div>
+
+<script src="assets/core.js"></script>
+<script src="assets/devices.js"></script>
+<script src="assets/live.js"></script>
+</body>
+</html>

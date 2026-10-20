@@ -23,7 +23,12 @@
 #include <WebServer.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <math.h>
+#if defined(REWATCH_BUILD_CHECK)
+#include "secrets.example.h"
+#else
 #include "secrets.h"
+#endif
 
 static const uint8_t PIN_LED = 2;      // onboard LED
 static const uint8_t PIN_BTN = 0;      // BOOT button
@@ -97,13 +102,17 @@ void on_mqtt(char *topic, byte *payload, unsigned int len) {
     return;
   }
   // rewatch/iot/<id>/cmd  — the responder (or an operator) setting a target
-  int s1 = t.indexOf('/', 8);           // after "rewatch/iot/"
+  if (!t.startsWith("rewatch/iot/") || !t.endsWith("/cmd")) return;
   int s2 = t.indexOf('/', 12);
   if (s2 > 0) {
+    if (t.substring(s2) != "/cmd") return;
     String id = t.substring(12, s2);
     Room *r = find_room(id.c_str());
     if (r && doc["setpoint"].is<float>()) {
-      r->setpoint = doc["setpoint"].as<float>();
+      float setpoint = doc["setpoint"].as<float>();
+      // Bound this demo model; malformed/nonfinite targets must not poison telemetry.
+      if (!isfinite(setpoint) || setpoint < 16.0f || setpoint > 35.0f) return;
+      r->setpoint = setpoint;
       set_spike(r, false);              // a command back to baseline clears the spike
       r->target = r->setpoint;
       Serial.printf("[rig] %s setpoint -> %.0f (%s)\n", r->id, r->setpoint,
@@ -119,11 +128,14 @@ void mqtt_reconnect() {
   next = millis() + 3000;
   String id = "rewatch-rig-" + String((uint32_t)ESP.getEfuseMac(), HEX);
   bool ok = strlen(REWATCH_MQTT_USER)
-    ? mqtt.connect(id.c_str(), REWATCH_MQTT_USER, REWATCH_MQTT_PASS)
-    : mqtt.connect(id.c_str());
+    ? mqtt.connect(id.c_str(), REWATCH_MQTT_USER, REWATCH_MQTT_PASS,
+                   "rewatch/health/rig", 0, true, "{\"node\":\"rig\",\"online\":false}")
+    : mqtt.connect(id.c_str(), "rewatch/health/rig", 0, true,
+                   "{\"node\":\"rig\",\"online\":false}");
   if (ok) {
     mqtt.subscribe("rewatch/rig/cmd");
     mqtt.subscribe("rewatch/iot/+/cmd");
+    mqtt.publish("rewatch/health/rig", "{\"node\":\"rig\",\"online\":true}", true);
     Serial.println("[rig] mqtt up");
   }
 }
@@ -138,7 +150,8 @@ void publish_all() {
     d["setpoint"] = r.setpoint;
     d["power"] = r.spiked ? "fault" : "on";
     d["ip"] = ip;
-    d["ts"] = (double)time(nullptr);
+    // No wall clock is configured: the host stamps reception time instead.
+    d["uptime_s"] = millis() / 1000;
     char topic[48]; snprintf(topic, sizeof(topic), "rewatch/iot/%s/telemetry", r.id);
     String out; serializeJson(d, out);
     mqtt.publish(topic, out.c_str());
@@ -168,6 +181,11 @@ void loop() {
   mqtt_reconnect();
   mqtt.loop();
   http.handleClient();
+  static uint32_t t_health = 0;
+  if (millis() - t_health >= 5000 && mqtt.connected()) {
+    t_health = millis();
+    mqtt.publish("rewatch/health/rig", "{\"node\":\"rig\",\"online\":true}", true);
+  }
 
   // BOOT button toggles the Room 1 spike (debounced edge)
   static bool last = true; static uint32_t t_btn = 0;

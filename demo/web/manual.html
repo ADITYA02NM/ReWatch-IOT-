@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>ReWatch — operator manual</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#0a0a0a;--fg:#c8c8c8;--dim:#7d7d7d;--dim2:#565656;--line:#2a2a2a;
+--ok:#34d27b;--blue:#4c8dff;--warn:#f2c230;--err:#ff4a3d;--purple:#b45cff;
+--mono:ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;padding:14px;background:var(--bg);color:var(--fg);font:13px/1.6 var(--mono);max-width:1040px}
+a{color:inherit} a:hover{color:var(--ok)}
+h1{font-size:15px;letter-spacing:.06em;margin:0}
+h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:4px;margin:26px 0 8px}
+.hd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.sp{flex:1}
+.hd a{text-decoration:none;border:1px solid var(--line);padding:1px 7px}
+table{border-collapse:collapse;width:100%;margin:6px 0}
+td,th{text-align:left;padding:4px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:400;text-transform:uppercase;font-size:10px}
+code{background:#151515;padding:0 5px;border-radius:3px}
+.eq{border-left:2px solid var(--line);background:#111;padding:8px 12px;margin:8px 0;font-size:14px}
+.pill{display:inline-block;padding:0 8px;border-radius:999px;border:1px solid currentColor;font-size:11px}
+.GREEN{color:var(--ok)}.BLUE{color:var(--blue)}.YELLOW{color:var(--warn)}.RED{color:var(--err)}.PURPLE{color:var(--purple)}
+.note{border-left:2px solid var(--warn);padding:6px 12px;color:var(--dim);margin:10px 0}
+ul{padding-left:18px} li{margin:3px 0}
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>ReWatch — operator manual</h1>
+  <span class="dim">how it scores, bands, and what responses it takes</span>
+  <span class="sp"></span>
+  <a href="/">dashboard</a><a href="reports.html">reports</a><a href="debug.html">vitals</a>
+</div>
+
+<h2>What ReWatch is</h2>
+<p>Three Raspberry Pis and two ESP32s watch the IoT layer of a building. ReWatch
+<b>detects</b> network attacks and abnormal device behaviour, <b>scores</b> them into one
+number, <b>alerts</b> the owner by e-mail and the shelf LED/OLED, and — if nobody
+answers in time — <b>responds</b> on its own. Nothing here talks to a cloud.</p>
+
+<h2>The score</h2>
+<div class="eq">score = clamp( max(condition points) + Σ impulse points · ½<sup>(age / 60s)</sup> , 0, 100 )</div>
+<p><b>Conditions</b> last while a detector says they are true — a device in
+<code>warn</code> or <code>critical</code>. <b>Impulses</b> are one-off detections that fade over
+a 60-second half-life, so one <code>nmap</code> run peaks and then decays on its own.</p>
+
+<table>
+<tr><th>Input</th><th>Points</th><th>Fed by</th></tr>
+<tr><td>AC critical (≥32 °C)</td><td>90 (condition)</td><td>Pi 3 Sentinel anomaly watch</td></tr>
+<tr><td>AC warning</td><td>45 (condition)</td><td>Pi 3 Sentinel anomaly watch</td></tr>
+<tr><td>packet flood</td><td>75 (impulse)</td><td>Sentinel sniffer</td></tr>
+<tr><td>port scan (nmap)</td><td>45 (impulse)</td><td>Sentinel sniffer</td></tr>
+<tr><td>telemetry mismatch</td><td>40 (impulse)</td><td>Pi 4 Wi-Fi verifier</td></tr>
+<tr><td>ARP / host sweep</td><td>35 (impulse)</td><td>Sentinel sniffer</td></tr>
+<tr><td>ping sweep</td><td>30 (impulse)</td><td>Sentinel sniffer</td></tr>
+<tr><td>new device on LAN</td><td>20 (impulse)</td><td>Sentinel device registry</td></tr>
+</table>
+
+<h2>Bands</h2>
+<table>
+<tr><th>Band</th><th>Score</th><th>LED</th><th>Meaning &amp; action</th></tr>
+<tr><td><span class="pill GREEN">GREEN</span></td><td>0–29</td><td>steady green</td><td>Normal. Monitor only.</td></tr>
+<tr><td><span class="pill BLUE">BLUE</span></td><td>—</td><td>0.5 Hz blue blink</td><td>A required node (Sentinel or Herald) is offline.</td></tr>
+<tr><td><span class="pill YELLOW">YELLOW</span></td><td>30–69</td><td>2 Hz yellow</td><td>Something to look at — a scan or a drifting device.</td></tr>
+<tr><td><span class="pill RED">RED</span></td><td>70–100</td><td>4 Hz red blink</td><td>Critical. Opens an incident, requests mail (preview by default), 20-second demo countdown.</td></tr>
+<tr><td><span class="pill PURPLE">PURPLE</span></td><td>—</td><td>1 Hz purple</td><td>An unacknowledged incident reached its simulated response state.</td></tr>
+</table>
+
+<h2>The acknowledgement rule</h2>
+<p>This laptop demonstration is simulated. Ten devices appear at 20 s after start/Replay,
+the AC spike starts at 30 s, and RED opens a <b>20-second</b> acknowledgement window.
+Production defaults to 120 s. Black Hat feed injects synthetic detections only.</p>
+<p>Refresh reconnects without resetting the scene. Replay clears the scene but not SQLite-retained reports or the five-minute summary cadence. Select topology tiles for reported evidence and explicitly permitted synthetic controls.</p>
+<p>When the band goes RED an incident opens with a countdown:</p>
+<ul>
+<li>You press <b>Acknowledge</b> on the dashboard (or the e-mail link) → the automation is cancelled; you own it.</li>
+<li>Nobody answers before the countdown ends → the band goes <span class="PURPLE">PURPLE</span> and ReWatch attempts the simulated playbook. A missed ACK is not proof of an attack.</li>
+</ul>
+
+<h2>Responses (playbooks)</h2>
+<table>
+<tr><th>Cause</th><th>Automatic response</th></tr>
+<tr><td>Simulated enrolled AC abnormal</td><td>Request the trusted 20 °C baseline; observe the simulated temperature recover gradually. Production requires an enabled, trusted device profile and a working bridge.</td></tr>
+<tr><td>Synthetic scan / flood</td><td>Demonstration events only; this server does not change a firewall or run a scan.</td></tr>
+</table>
+<div class="note">You can also press <b>Respond now</b> to run the playbook immediately instead of waiting for the countdown.</div>
+
+<h2>The shelf indicator (ESP32-C3)</h2>
+<p>A NeoPixel carries the band in colour and motion; a 128×64 OLED shows the score,
+the fleet (which Pis are reporting), the status word and an ECG trace whose rate is
+the band (flat green, one beat yellow, two red, four purple). If the Pi 4 link goes
+quiet the board shows a sleeping face and the pixel turns blue — never a stale green.</p>
+
+<h2>E-mail (Pi 3 Herald)</h2>
+<p>Delivery is disabled by default: RED, ACK, PURPLE, resolution, test messages and
+five-minute summaries produce labelled previews. Explicitly configured SMTP/TLS
+uses a background worker; server acceptance is not proof of inbox delivery.
+Never record or commit credentials.</p>
+
+<h2>Evidence</h2>
+<p>Every message on the bus is logged to the pen drive on the Sentinel Pi, one
+folder per day (<code>telemetry.jsonl</code>, <code>events.jsonl</code>, <code>bus.jsonl</code>). The Pi 4
+keeps a rolling SQLite copy for the dashboard and the 5-hour report. If the stick is
+missing the fleet panel shows <span class="err">usb missing</span> and logging falls back to the SD card.</p>
+
+<p class="dim" style="margin-top:30px">ReWatch IoT · Apache-2.0 · zero cloud · <a href="/">back to dashboard</a></p>
+</body>
+</html>

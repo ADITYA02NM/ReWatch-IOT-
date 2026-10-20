@@ -38,6 +38,7 @@ namespace {
 Adafruit_SSD1306 oled(OLED_W, OLED_H, &Wire, -1);
 Adafruit_NeoPixel pixel(LED_COUNT, PIN_LED_DATA, NEO_GRB + NEO_KHZ800);
 bool strip_ok = false;
+bool oled_ok = false;
 
 enum class Band : uint8_t { Green, Blue, Yellow, Red, Purple, Unknown };
 enum class LedMode : uint8_t { Offline, Normal, Detect, Alert, Action };
@@ -54,7 +55,9 @@ struct Reading {
 };
 Reading g;
 String line;
-constexpr size_t MAX_FRAME = 256;
+// Python json.dumps escapes up to 40 Unicode characters as \uXXXX pairs.
+constexpr size_t MAX_FRAME = 640;
+bool dropping_line = false;
 constexpr size_t MSG_COLS = OLED_W / 6;
 
 // ── colour rails (full saturation, never dimmed) ────────────────────────────
@@ -115,14 +118,21 @@ int ecg_defl(int p, int pitch) {
 void apply_frame(const String &raw) {
   JsonDocument doc;
   if (deserializeJson(doc, raw)) return;
-  g.score = doc["score"] | g.score;
-  if (doc["band"].is<const char *>()) g.band = parse_band(doc["band"].as<const char *>());
+  // Only complete readings can renew the watchdog; {} must not keep GREEN alive.
+  if (!doc["score"].is<int>() || !doc["band"].is<const char *>()) return;
+  int score = doc["score"].as<int>();
+  if (score < 0 || score > 100) return;
+  g.score = score;
+  g.band = parse_band(doc["band"].as<const char *>());
   g.open = doc["open"] | 0;
   g.cd = doc["cd"] | -1;
   const char *m = doc["msg"].as<const char *>();
   strncpy(g.msg, m ? m : "", sizeof(g.msg) - 1); g.msg[sizeof(g.msg) - 1] = '\0';
   const char *nd = doc["nodes"].as<const char *>();
-  if (nd) { strncpy(g.nodes, nd, sizeof(g.nodes) - 1); g.nodes[sizeof(g.nodes) - 1] = '\0'; }
+  strcpy(g.nodes, "0000");
+  if (nd && strlen(nd) == 4) {
+    for (size_t i = 0; i < 4; i++) g.nodes[i] = nd[i] == '1' ? '1' : '0';
+  }
   g.have_data = true;
   g.last_rx = millis();
 }
@@ -131,8 +141,12 @@ void apply_frame(const String &raw) {
 void apply_state(const String &raw) {
   JsonDocument doc;
   if (deserializeJson(doc, raw)) return;
-  g.score = doc["score"] | g.score;
-  if (doc["band"].is<const char *>()) g.band = parse_band(doc["band"].as<const char *>());
+  if (!doc["score"].is<float>() || !doc["band"].is<const char *>()) return;
+  float score = doc["score"].as<float>();
+  if (!isfinite(score) || score < 0 || score > 100) return;
+  g.score = int(roundf(score));
+  g.band = parse_band(doc["band"].as<const char *>());
+  strcpy(g.nodes, "0000");  // threat/state carries no fleet heartbeat bits
   JsonVariant inc = doc["incident"];
   g.open = (!inc.isNull() && strcmp(inc["state"] | "", "open") == 0) ? 1 : 0;
   g.cd = g.open ? int(inc["remaining"] | -1) : -1;
@@ -288,6 +302,7 @@ void draw_trace(int16_t y0, int16_t h) {
   }
 }
 void draw() {
+  if (!oled_ok) return;  // begin() may fail before a framebuffer is allocated
   oled.clearDisplay(); oled.setTextColor(SSD1306_WHITE);
   if (link_lost()) { draw_lost(); oled.display(); return; }
   oled.setTextSize(1); oled.setCursor(0, 0); oled.print(F("ReWatch"));
@@ -356,7 +371,8 @@ void net_loop(uint32_t) {}
 void setup() {
   Serial.begin(SERIAL_BAUD); Serial.setTimeout(50);
   pixel.begin(); pixel.setBrightness(LED_BRIGHT); pixel.clear(); pixel.show(); strip_ok = true;
-  if (oled_begin()) { oled.setTextWrap(false); boot_animation(); }
+  oled_ok = oled_begin();
+  if (oled_ok) { oled.setTextWrap(false); boot_animation(); }
   line.reserve(MAX_FRAME);
 #if defined(REWATCH_HAS_WIFI)
   WiFi.mode(WIFI_STA); WiFi.setSleep(false);
@@ -369,8 +385,12 @@ void loop() {
   while (Serial.available() > 0) {
     char c = (char)Serial.read();
     if (c == '\r') continue;
-    if (c == '\n') { if (line.length()) apply_frame(line); line = ""; continue; }
-    if (line.length() >= MAX_FRAME) { line = ""; continue; }
+    if (c == '\n') {
+      if (!dropping_line && line.length()) apply_frame(line);
+      line = ""; dropping_line = false; continue;
+    }
+    if (dropping_line) continue;
+    if (line.length() >= MAX_FRAME) { line = ""; dropping_line = true; continue; }
     line += c;
   }
   net_loop(millis());

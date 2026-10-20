@@ -8,7 +8,6 @@ Enrollment tokens stored as SHA-256 hashes only.
 from __future__ import annotations
 
 import hashlib
-import os
 import secrets
 import sqlite3
 import time

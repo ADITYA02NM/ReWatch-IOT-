@@ -18,10 +18,10 @@ redistributing can check it.
 
 ## 1. Font Software — SIL Open Font License 1.1
 
-The dashboard self-hosts four font families. `dashboard/web/scripts/build-fonts.py`
-builds Latin subsets of them and writes `dashboard/web/src/styles/fonts.css`; the
-resulting `.woff2` files are served from the Pi4 as first-party assets, not
-fetched from a CDN.
+The dashboard self-hosts Newsreader, Schibsted Grotesk and JetBrains Mono under
+`pi4-core/web/assets/fonts/`, also copied into the standalone demo. The IBM Plex
+notice below is retained from earlier work; no IBM Plex binary is currently
+served. There is no font CDN or font build step in this repository.
 
 Subsetting is mechanical: glyph subset plus woff2 re-encode. No glyph outlines are
 redrawn and no family or reserved font name is changed. The derivatives therefore
@@ -72,7 +72,7 @@ Copyright 2019 IBM Corp. All rights reserved.
 
 ### Licence text
 
-All four are licensed under the SIL Open Font License, Version 1.1, reproduced
+These fonts are licensed under the SIL Open Font License, Version 1.1, reproduced
 here in full as the licence requires. The original is available with a FAQ at
 <https://scripts.sil.org/OFL>.
 
@@ -167,16 +167,18 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ---
 
-## 2. Python packages — runtime (Pi4 governance node)
+## 2. Python packages — runtime
 
-Pinned in `dashboard/server/requirements.txt`.
+Pinned in `requirements.txt`; role code uses the relevant subset.
 
 | Package | Version | Licence |
 |---------|---------|---------|
-| aiohttp | 3.10.10 | Apache-2.0 |
-| aiomqtt | 2.3.0 | BSD-3-Clause |
-| aiosqlite | 0.20.0 | MIT |
-| webauthn | 3.0.1 | BSD-3-Clause |
+| aiohttp | 3.14.5 | Apache-2.0 |
+| aiomqtt | 2.5.1 | BSD-3-Clause |
+| webauthn | 2.8.0 | BSD-3-Clause |
+| paho-mqtt | 2.1.0 | EPL-2.0 OR BSD-3-Clause |
+| pyserial | 3.5 | BSD-3-Clause |
+| scapy | 2.8.0 | GPL-2.0-only |
 
 Not resold and not modified; installed from wheels by `pip` at deploy time. The
 Apache-2.0 packages include their own `NOTICE` files inside the wheels, which
@@ -188,32 +190,28 @@ Pinned in `requirements-dev.txt`. **Not present on a deployed Pi.**
 
 | Package | Version | Licence |
 |---------|---------|---------|
-| pytest | 8.3.3 | MIT |
-| pytest-asyncio | 0.24.0 | Apache-2.0 |
-| paho-mqtt | 2.1.0 | EPL-2.0 OR BSD-3-Clause |
-| pyserial | 3.5 | BSD-3-Clause |
+| pytest | 9.1.1 | MIT |
+| ruff | 0.17.1 | MIT |
+| playwright | 1.64.0 | Apache-2.0 |
 
-`paho-mqtt` is dual-licensed; ReWatch takes it under **BSD-3-Clause**. `cbor2`
-(MIT) and `cryptography` (Apache-2.0 OR BSD-3-Clause) appear only if the optional
-ESP32 tooling is used.
+`paho-mqtt` is dual-licensed; ReWatch uses the BSD-3-Clause option. WebAuthn also
+installs transitive packages such as `cbor2` (MIT) and `cryptography`
+(Apache-2.0 OR BSD-3-Clause). Retain their installed license notices when
+redistributing an environment. Scapy is imported by Sentinel: review its GPL
+obligations before distributing a combined deployment or disk image; this file
+does not resolve legal questions about derivative works.
 
-## 4. Node packages — build-time only
+## 4. Frontend and firmware dependencies
 
-Pinned in `dashboard/web/package.json`. **Nothing here ships in the browser
-bundle except React.**
+The shipped dashboard is plain HTML/CSS/JavaScript: no React, Vite, npm build or
+runtime JavaScript package is required. ULTRON and VoidMain were read-only design
+references, not runtime dependencies.
 
-| Package | Version | Licence |
-|---------|---------|---------|
-| react, react-dom | 18.3.1 | MIT |
-| vite | 5.4.10 | MIT |
-| vitest | 2.1.8 | MIT |
-| typescript | 5.6.3 | Apache-2.0 |
-| @vitejs/plugin-react | 4.3.3 | MIT |
-| @types/react, @types/react-dom | 18.3.x | MIT |
-| @fontsource-variable/* | ^5.3.0 | MIT (package) — the fonts inside are OFL, §1 |
-
-The `@fontsource` packages are MIT as *packaging*; the font binaries they carry
-are the OFL Font Software listed in §1, and it is §1 that governs what is served.
+PlatformIO downloads ArduinoJson (MIT), PubSubClient (MIT), Adafruit NeoPixel
+(LGPL-3.0), Adafruit GFX and SSD1306 (BSD), and ESP32 Arduino/platform tooling.
+See each downloaded package's license and the versions in `platformio.ini`.
+Compiled firmware includes third-party code; comply with those licenses when
+redistributing binaries. Build directories and downloaded sources are ignored.
 
 ---
 
@@ -223,7 +221,6 @@ This is the licensing boundary that matters most for ReWatch, and it is delibera
 
 | Program | Licence | How ReWatch uses it |
 |---------|---------|--------------------|
-| **Suricata** | GPL-2.0 | Started as its own process by `systemd`; ReWatch reads its `eve.json` output. |
 | **Mosquitto** | EPL-2.0 | Its own daemon; ReWatch is an MQTT *client* over TCP:1883. |
 | **nftables / nft** | GPL-2.0 | Its own binary; ReWatch applies rules through `nft` and the kernel. |
 
@@ -234,20 +231,20 @@ Apache-2.0 licence does not reach them.
 
 The practical consequences, which are worth knowing before you build a booth image:
 
-- If you **redistribute a disk image** with Suricata or Mosquitto already
+- If you **redistribute a disk image** with nftables or Mosquitto already
   installed, you are the one distributing GPL-2.0 and EPL-2.0 binaries. Ship
   their licences and, for the GPL-2.0 programs, be ready to supply the
-  corresponding source — `apt-get source suricata` is normally enough.
-- If you only **document** `apt-get install suricata mosquitto nftables`, no
+  corresponding source and build information where required.
+- If you only **document** `apt-get install mosquitto nftables`, no
   redistribution happens and no obligation attaches to you.
-- This repository does neither: it documents the install in
-  [`build.md`](build.md).
+- This repository supplies installer scripts, not OS images or vendored daemon
+  binaries. Follow the [installation guide](README.md#physical-installation).
 
 ---
 
 ## 6. Deliberately absent
 
-ReWatch has **no runtime JavaScript dependency beyond React**. The dashboard has no
+ReWatch has **no runtime JavaScript package dependency**. The dashboard has no
 CDN `<script>`, no font CDN, no analytics, no telemetry. That is a security
 property before it is a licensing one — see the CSP notes in
 [`SECURITY.md`](SECURITY.md) — but it also means the browser-side third-party

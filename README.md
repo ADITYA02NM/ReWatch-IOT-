@@ -1,218 +1,359 @@
+<p align="center"><img src="assets/banner.svg" alt="ReWatch IoT — observe, assess, alert, respond"></p>
+
 <h1 align="center">ReWatch IoT</h1>
+<p align="center"><b>Local IoT monitoring with an operator in the loop.</b><br>Three Raspberry Pis · two ESP32s · one visible risk picture</p>
 
-<p align="center"><b>Detect → score → alert → respond on the IoT layer of a building — zero cloud.</b></p>
+## Abstract
 
-<p align="center">
-  <img src="https://img.shields.io/badge/phase-detect%20·%20govern%20·%20alert%20·%20respond-34d27b" alt="scope">
-  <img src="https://img.shields.io/badge/hardware-2×Pi3%20·%20Pi4%20·%202×ESP32-4c8dff" alt="hardware">
-  <img src="https://img.shields.io/badge/cloud-none-ff4a3d" alt="zero cloud">
-  <img src="https://img.shields.io/badge/licence-Apache--2.0-blue" alt="licence">
-</p>
+ReWatch watches an authorized building IoT network, combines network events with
+device telemetry, and presents a shared risk score on a browser dashboard and a
+small OLED/LED indicator. The central example is an AC controller: an abnormal
+temperature becomes a visible warning, a critical condition opens an incident,
+and an operator can acknowledge it before a configured response is attempted.
 
----
+The software separates **Sentinel** detection, **Core** decision-making and
+**Herald** e-mail delivery across three Raspberry Pis. An ESP32-C3 displays the
+result; an ESP32-WROOM provides four simulated room ACs for an authorized test
+rig. Scoring and the dashboard are local; configured SMTP delivery may use an
+external provider. This is a research/prototype system, not a certified building
+safety controller or a guarantee of intrusion prevention.
 
-ReWatch is a small box of real hardware that watches the smart devices in a
-building. It sniffs the network for scans and floods, learns what each IoT
-device normally does, and when something is wrong it **scores** the risk,
-**lights** a shelf indicator, **e-mails** the owner — and if nobody answers in
-two minutes, it **acts on its own** and puts the device back to normal.
+> **Current evidence:** the laptop simulation and automated software checks are
+> distinct from a complete physical deployment. The connected C3 was uploaded
+> successfully on 21 October 2026; OLED/pixel appearance, three-Pi deployment,
+> wireless verification and real SMTP delivery still require physical checks.
+> All repository hardware artwork is labelled illustration, not photography.
 
-It is five boards on a shelf next to the router. Nothing phones home.
+**Start here:** [Laptop demo](#laptop-demo) · [Hardware](hardware.md) ·
+[Firmware](firmware/README.md) · [Story](story.md) · [Security](SECURITY.md) ·
+[Verification record](docs/BUILD-CHECKLIST.md)
 
+## Architecture
+
+![Intended network topology and indicator wiring](assets/hardware/diagram.svg)
+
+```text
+Authorized LAN / IoT telemetry
+          │
+   Pi 3 SENTINEL ── detections / anomalies ──┐
+   packet capture + USB JSONL log            │ MQTT on Core
+                                            ▼
+   Wi-Fi /status ── Pi 4 CORE ── score / incident / command
+                    │   │   │
+                    │   │   └── Pi 3 HERALD ── SMTP alert
+                    │   └────── ESP32-C3 USB ── OLED + LED
+                    └────────── Browser ── acknowledge / reports
+
+   ESP32-WROOM rig ── four simulated room ACs, MQTT + HTTP
 ```
-         ┌─ port 1 ── ROUTER (data comes in)
- 8-PORT  ├─ port 2 ── Pi 3  SENTINEL   detect scans/anomalies + log to USB pen drive
- SWITCH  ├─ port 3 ── Pi 4  CORE       MQTT · threat engine · dashboard · Wi-Fi verifier
-         └─ port 4 ── Pi 3  HERALD     SMTP alert e-mails (TL-WN722N)
 
- Pi 4 USB ── ESP32-C3  indicator   NeoPixel band + OLED score (+ boot animation)
- Wi-Fi    ── ESP32-WROOM rig       the room AC controllers (demo devices)
-```
+An ordinary switch does **not** give Sentinel every other host's unicast
+traffic. Use an appropriate mirror/SPAN port or TAP and validate visibility.
+Core's optional host firewall does **not** quarantine arbitrary LAN peers
+unless traffic actually traverses Core. See [deployment limits](hardware.md#observation-and-deployment-limits).
 
-## How the loop works
+## How it works
 
-1. **Sentinel** (Pi 3) sniffs the LAN and watches every device's telemetry.
-   It detects nmap scans, ping sweeps, floods and new devices, and flags any AC
-   unit that goes abnormal. Every message is logged to the **USB pen drive**.
-2. **Core** (Pi 4) fuses all of that into one score, `0–100`, and a band.
-   It also joins the Wi-Fi on a second radio (**AC600**) and asks each device
-   directly, cross-checking what the bus claims against what the device says.
-3. The band drives everything: the **dashboard** at `rewatch.local`, the shelf
-   **NeoPixel + OLED**, and — on RED — an **e-mail** from Herald.
-4. On RED a **2-minute countdown** starts. Acknowledge it and you own it; ignore
-   it and ReWatch turns **PURPLE**, treats it as unauthorised, and **responds** —
-   forcing the AC back to its baseline, or blocking the attacking host.
+1. **Observe.** Sentinel detects observable TCP/UDP scans, FIN/NULL/Xmas probes,
+   slower scan patterns, ARP/ICMP sweeps, floods and device changes. Thresholds
+   evaluate AC telemetry and supported tamper/safety/power fields. Firmware
+   version changes are **unattested metadata**, not verified firmware integrity.
+   These are explicit rules, not machine learning or reliable tool attribution:
+   nmap and other tools can produce the same patterns.
+2. **Cross-check.** Core's verifier queries a device's HTTP `/status` through the
+   configured Wi-Fi interface and compares values. This is a consistency check,
+   not cryptographic proof that the device or sensor is honest.
+3. **Assess.** The threat engine combines persistent conditions and decaying
+   event impulses. It broadcasts a score, band, explanation and incident state.
+4. **Alert.** On RED, Herald attempts an e-mail. The dashboard and C3 display the
+   acknowledgement deadline. SMTP acceptance is not proof of inbox delivery.
+5. **Respond.** ACK records operator ownership and cancels automatic escalation;
+   it does not repair the AC or erase risk. Without ACK, the engine enters
+    PURPLE and attempts its response. Only explicitly enrolled AC/thermostat
+    playbooks can request the trusted baseline setpoint; other devices remain
+    operator-review only. Verify the resulting state independently.
 
-| Band | Score | Means | Indicator |
-|------|-------|-------|-----------|
-| 🟢 GREEN | 0–29 | normal | steady green |
-| 🔵 BLUE | — | a node is offline | slow blue throb |
-| 🟡 YELLOW | 30–69 | a scan or a drifting device | 2 Hz yellow |
-| 🔴 RED | 70–100 | critical | 4 Hz red blink + e-mail |
-| 🟣 PURPLE | — | nobody responded → auto action | 1 Hz purple |
+### Score and bands
 
-## Dashboard
+`score = clamp(max(active condition points) + sum(decaying impulses), 0, 100)`.
+Warning conditions contribute 45 points; critical conditions 90. Event impulses
+default to a 60-second half-life: portscan 45, ARP sweep 35, ping sweep 30,
+new device 20, integrity mismatch 40, firmware-version change 40, slow scan 45,
+flood 75 and device offline 10.
 
-`https://rewatch.local` (or `http://<pi4-ip>:8080`). Locked with a **passkey** —
-only the owner's registered device can open it. Inside:
+| Band | Meaning | C3 indication |
+| --- | --- | --- |
+| GREEN | Score below 30 | Steady green |
+| YELLOW | Score 30–69 | Yellow, 2 Hz |
+| RED | Score at least 70; incident opens | Red, 4 Hz; ACK countdown |
+| BLUE | Required Sentinel/Herald heartbeat missing after timeout | Blue, 0.5 Hz blink |
+| PURPLE | Unacknowledged incident; response state | Purple, 1 Hz |
 
-- live **threat score** with the risk-engine inputs that make it up;
-- the **incident** panel with the 2-minute countdown and **Acknowledge**;
-- a live **twin of the OLED** and the NeoPixel colour;
-- the **IoT topology** (switch, Pis, ESP32s, rooms) coloured by state;
-- the **rooms**, each AC's temperature with a Wi-Fi-verified tick;
-- **alerts & events**, the **fleet** health, and the raw **vitals** page.
-- `/reports.html` — *"the events that happened in the last 5 hours."*
+BLUE and PURPLE are state overrides, not extra score ranges. USB link loss can
+also make the indicator BLUE independently of the engine's band. Production
+defaults to **120 seconds** for ACK; the recording demo defaults to **20 seconds**.
 
-The frontend is plain HTML/CSS/JS with self-hosted fonts. No build step, no CDN.
+## Laptop demo
 
----
-
-# Installation
-
-## 0. What you need
-
-| Qty | Part | Role |
-|----|------|------|
-| 1 | Raspberry Pi 4 (4/8 GB) + SD card | **Core** |
-| 2 | Raspberry Pi 3 + SD cards | **Sentinel**, **Herald** |
-| 1 | 5-/8-port Gigabit switch | production LAN |
-| 1 | USB pen drive | Sentinel evidence log |
-| 1 | TP-Link **AC600** USB Wi-Fi | Pi 4 verifier radio |
-| 1 | TP-Link **TL-WN722N** USB Wi-Fi | Herald e-mail radio |
-| 1 | ESP32-C3 SuperMini + SSD1306 OLED | indicator |
-| 1 | ESP32-WROOM-32 | room rig (demo devices) |
-| — | Cat6 cables, USB cables, power | — |
-
-Give each Pi a **static IP**: Core `…​.1`, Sentinel `…​.2`, Herald `…​.3`
-(the installer defaults to `192.168.100.0/24`).
-
-## 1. Wire it (step by step)
-
-1. **Switch port 1 → router.** This is where the data comes in.
-2. **Switch port 2 → Pi 3 Sentinel** (eth0). Plug the **USB pen drive** into
-   Sentinel — this is where every event is logged.
-3. **Switch port 3 → Pi 4 Core** (eth0).
-4. **Switch port 4 → Pi 3 Herald** (eth0). Plug the **TL-WN722N** into Herald
-   and join it to the same Wi-Fi — alerts go out over this radio.
-5. **Pi 4 Core:** plug in the **AC600** (join it to the IoT Wi-Fi — this is the
-   verifier radio) and the **ESP32-C3** over USB (the indicator).
-6. **ESP32-C3:** OLED to **SDA = GPIO5, SCL = GPIO6**; the NeoPixel is the
-   onboard pixel on **GPIO8**.
-7. **ESP32-WROOM:** power over USB; it joins the Wi-Fi on its own. This is the
-   demo rig standing in for the building's AC controllers — switch it off and
-   keep it aside once the real devices are present.
-
-## 2. Flash the two ESP32 boards
-
-Install [PlatformIO](https://platformio.org/) (`pip install platformio`), then:
+Requires Python 3.10+ with `venv`; no Pi, root access, broker or frontend build.
+Python 3.14 was used for the recorded software checks.
 
 ```bash
-# indicator (plugs into the Pi 4 by USB)
-cd firmware/esp32-c3-indicator && pio run -t upload
-
-# room rig (needs Wi-Fi creds)
-cd firmware/esp32-wroom-rig
-cp src/secrets.example.h src/secrets.h   # fill in SSID / password / Pi 4 IP
-pio run -t upload
+git clone https://github.com/ADITYA02NM/ReWatch-IOT-.git
+cd ReWatch-IOT-
+./demo/run.sh
 ```
 
-See [`firmware/README.md`](firmware/README.md) for the pin tables.
+The launcher creates `.venv` if absent and installs missing demo dependencies.
+For an existing environment, explicitly synchronize versions with
+`.venv/bin/python -m pip install -r demo/requirements.txt`.
+Open **http://localhost:8080** → **Access code** → `rewatch`.
+This deliberately simple local demo code is not a production password.
 
-## 3. Deploy the three Pis — one command
+| Recording step | Behavior |
+| --- | --- |
+| First dashboard connection or Replay | Start the shared simulation timeline |
+| +20 s | Ten simulated devices appear, including four ACs near 20 °C |
+| +30 s | Room 1 begins heating toward 35 °C |
+| Warning → critical | YELLOW then RED after the detector's critical hold |
+| RED +20 s, no ACK | PURPLE; simulated command returns the AC setpoint to 20 °C |
+| ACK before deadline | Automatic action cancelled; abnormal temperature remains until reset |
 
-From your laptop (needs `ssh` + `rsync`; put your key on each Pi first with
-`ssh-copy-id pi@<ip>`):
+All viewers share one simulated building. **Refresh, including Ctrl+Shift+R,
+reconnects without resetting it; only Replay resets the scene.** Black Hat feed
+injects synthetic detections only—it launches no scans or attacks. Manual AC
+spike/reset and firmware-version-change controls are separate. SQLite retains
+events, samples and incidents across Replay and server restarts. The five-hour
+report window displays accumulated evidence, not five hours of fabricated data.
+
+### Device capabilities, not universal vendor control
+
+The logical topology lists observed/enrolled devices and selectable evidence.
+MQTT bridge profiles support AC/thermostat setpoints, camera recording, door
+**locking only**, plug/light/fan power, light brightness and fan speed. Sensors
+are observe-only. The demo provides ten synthetic devices across these types.
+This is **not native ONVIF, Matter, HomeKit or arbitrary IP-camera integration**;
+each real device needs a trusted bridge implementing the topic contract.
+
+Production starts observe-only. The installer seeds `/etc/rewatch/devices.json`
+from [devices.example.json](devices.example.json) only when absent. Review exact
+device IDs, kind, permitted actions and bounds; set `enabled: true` only after
+authorized bench testing. Core and Sentinel read `REWATCH_DEVICES_FILE`; keep
+their trusted policy consistent and restart their services after changes.
+Telemetry cannot grant itself control capabilities. No firmware writes, door
+unlocking or automatic cross-device shutdown are implemented.
+
+Authenticated `GET /api/devices` exposes this policy and observed metadata.
+`POST /api/control` validates the enrolled action/value, publishes
+`rewatch/iot/<device>/cmd`, and returns **202 requested**, not confirmed.
+Bridges must honor `action`/`value` and publish resulting telemetry; AC commands
+also retain the legacy `setpoint` field. Do not interpret broker acceptance as
+physical actuation or use this prototype for life-safety access control.
+
+### Demo passkey preview and optional physical display
+
+Normal passkey routes verify credentials. For recording **only**, the explicitly
+labelled preview requests a browser passkey prompt and then grants an unverified
+local session even when the prompt is dismissed:
 
 ```bash
-./start.sh
+DEMO_PASSKEY_PREVIEW=1 ./demo/run.sh
 ```
 
-It asks for each Pi's IP, your SMTP details and the dashboard hostname, prints
-the plan, and on your confirmation **SSHes into every node, copies the code,
-installs the broker and all the Python services, writes `/etc/rewatch/rewatch.env`,
-and starts everything** — then exits. Re-running it is safe; it never wipes your
-data or passkeys. Preview without touching anything: `./start.sh --dry-run`.
+This is **not authentication**. It is off by default, restricted to loopback, and
+absent from production. Browser/OS software decides whether a QR code appears;
+the website cannot force that UI or guarantee a phone can finish an unenrolled
+passkey ceremony. Use `localhost`, not a LAN IP, for WebAuthn development.
 
-> Under the hood each node runs [`tools/node-install.sh <role>`](tools/node-install.sh),
-> which you can also run by hand on a Pi. Services are `systemd` units named
-> `rewatch-*`; check them with `systemctl status 'rewatch-*'`.
-
-## 4. Register your passkey
-
-On the Pi 4, mint a one-time enrolment code:
+After flashing the matching C3 environment, mirror the demo onto it:
 
 ```bash
-ssh pi@<pi4-ip> 'cd ~/rewatch-src/pi4-core && sudo /opt/rewatch/venv/bin/python -m server.enroll'
+.venv/bin/python demo/indicator_bridge.py --port /dev/ttyUSB0
 ```
 
-Open the dashboard → **First time? Register this device** → paste the code →
-approve the passkey prompt. That device now unlocks ReWatch. (For the Black Hat
-demo laptops that can't use the passkey, set an access code in `start.sh` and use
-**Use access code**.)
+Do not run two serial writers at once. This bridge forwards simulated state;
+it does not turn synthetic devices into real monitoring evidence.
 
-## 5. HTTPS (optional but recommended)
-
-Passkeys work over `localhost` out of the box. To serve `https://rewatch.local`
-across the network, generate an offline CA and cert, install the CA on your
-devices, and point the env at them:
+### SMTP: preview first, real delivery only when configured
 
 ```bash
-./tools/make_local_ca.sh                 # writes ca/ and certs/
-# copy certs/server.{crt,key} to the Pi 4 under /etc/rewatch/certs/
-# in /etc/rewatch/rewatch.env set REWATCH_TLS_CERT, REWATCH_TLS_KEY, REWATCH_PORT=443
-sudo systemctl restart rewatch-dashboard
+cp demo/.env.example demo/.env
+chmod 600 demo/.env
+# Edit locally: SMTP_USER, a NEW SMTP_PASS, ALERT_TO, DEMO_SEND_MAIL=1.
+# Restart ./demo/run.sh after changing configuration.
 ```
 
-Keep `ca/ca.key` **off the Pi** — it lives on your admin machine only.
+Herald produces a system summary every **five minutes** (including unknown or
+stale state when no fresh evidence exists). The demo preserves this cadence
+across Replay and displays its preview/status in the feed. Default demo behavior
+is **preview—not sent**. With delivery enabled, a bounded
+background worker reuses Herald's TLS transport and reports acceptance or
+failure separately. Never paste an app password into source, chat, video or
+Git. Revoke any credential already exposed and create a replacement. Demo
+settings are loaded from ignored `demo/.env`; passwords are not shipped in the
+repository. SMTP checks need a real account and network and are not claimed
+as completed by unit tests. Production mail results use
+`rewatch/mail/result/<id>`, separate from the `rewatch/mail/test` request topic.
 
-## 6. Check it
+## Physical installation
 
-- `systemctl status 'rewatch-*'` on each Pi — all active.
-- Dashboard **fleet** panel: Core / Sentinel / Herald green, USB **mounted**,
-  SMTP **ready**.
-- Dashboard → **Send test e-mail** → it arrives.
-- Run `nmap -sS <any-host-on-the-LAN>` → a **port scan** event appears within
-  seconds and the score jumps to YELLOW.
+The [hardware guide](hardware.md) contains the full bill of materials, pin
+tables, photo placeholders, power cautions and five LED-state illustrations.
+Prepare Raspberry Pi OS with SSH, independent adequate power and known LAN
+addresses. Set up routing and wireless association yourself; the installer does
+not configure the router, DHCP reservations, Wi-Fi credentials or switch SPAN.
 
----
+### 1. Connect the intended topology
 
-## Repository layout
+- Router → switch port 1; Sentinel → port 2; Core → port 3; Herald → port 4.
+  Port numbers are a lab convention, not a requirement. Configure mirroring/TAP.
+- Sentinel: USB evidence drive mounted at `/mnt/rewatch-usb`, writable by the
+  service. Verify mount persistence, free space and physical log retention.
+- Core: AC600 adapter for HTTP verification and C3 over USB. Confirm the adapter's
+  actual chipset/driver and interface name; `wlan1` is only a default.
+- Herald: TL-WN722N Wi-Fi uplink for SMTP. Record hardware revision and route;
+  a second Wi-Fi connection is not inherently a separate management network.
+- WROOM: USB power, authorized test Wi-Fi and MQTT broker details. This board
+  simulates room controllers; it is not wired to a mains-powered AC appliance.
 
+### 2. Build and flash firmware
+
+Install PlatformIO separately. From the repository root:
+
+```bash
+# Native-USB C3 (usually /dev/ttyACM0):
+pio run -d firmware/esp32-c3-indicator -e esp32-c3-devkitm-1 -t upload --upload-port /dev/ttyACM0
+# CP210x/CH340 UART C3 (usually /dev/ttyUSB0), used for the connected board:
+pio run -d firmware/esp32-c3-indicator -e esp32-c3-uart -t upload --upload-port /dev/ttyUSB0
+
+# WROOM: edit the ignored copy with your own test-network credentials first.
+cp firmware/esp32-wroom-rig/src/secrets.example.h firmware/esp32-wroom-rig/src/secrets.h
+pio run -d firmware/esp32-wroom-rig -e esp32dev -t upload --upload-port /dev/ttyUSB1
 ```
-real/
-├── start.sh                 one-shot SSH deployer (run from your laptop)
-├── common/rewatch.py        shared contract: topics, bands, MQTT helper
-├── pi3-sentinel/            detection + USB evidence logging
-│   └── detector.py
-├── pi4-core/                the brain
-│   ├── engine.py            threat engine + responder (scoring, incidents, playbooks)
-│   ├── verifier.py          AC600 Wi-Fi cross-check
-│   ├── indicator.py         USB bridge -> ESP32-C3
-│   ├── server/              dashboard: aiohttp, passkey auth, WS, reports
-│   ├── web/                 the frontend (index/reports/debug/manual + assets)
-│   ├── systemd/  mosquitto/
-├── pi3-herald/mailer.py     SMTP alert e-mails (TL-WN722N)
-├── firmware/                esp32-c3-indicator/ · esp32-wroom-rig/
-├── tools/                   node-install.sh · make_local_ca.sh
-└── tests/                   pytest suite (engine, detectors, server)
+
+Confirm port and chip identity before uploading; port numbers can change.
+C3 defaults: OLED SDA GPIO5, SCL GPIO6, address `0x3C`, 128×64; pixel data
+GPIO8; serial 115200 baud. Not every SuperMini has an onboard addressable pixel.
+See [firmware documentation](firmware/README.md) before wiring or changing pins.
+
+### 3. Preview, then deploy the three Pis
+
+```bash
+./start.sh --dry-run    # asks questions, prints plan; no SSH or installation
+./start.sh              # same questions; deployment requires typing yes
 ```
 
-## Security notes
+The deployer requests each Pi's IP, SSH username, SMTP settings and hostname.
+Defaults are Core `192.168.100.1`, Sentinel `.2`, Herald `.3`; replace them with
+the actual addresses. The confirmation defaults to **no**. The SMTP password is
+not echoed. Multi-line or ambiguous quoted/escaped environment values are
+rejected. `--config file` **executes trusted shell code**; never source an
+untrusted downloaded configuration.
 
-- Dashboard is **passkey-only** (WebAuthn); sessions are 1-hour, cookies
-  `Secure; HttpOnly; SameSite=Strict`, session IDs stored as SHA-256 hashes.
-- The broker is open on the trusted production LAN by default. To require
-  per-client auth, set `allow_anonymous false` + a `password_file` in
-  `pi4-core/mosquitto/rewatch.conf` and fill `REWATCH_MQTT_USER/PASS`.
-- The firewall response (`RESPONDER_NFT=1`) uses an `nft` set `inet rewatch
-  blocklist` — create it on the Pi 4 before enabling.
-- ReWatch monitors **your own** network. Passive Wi-Fi/LAN watching and any
-  response action must stay inside networks you are authorised to operate.
+Only after confirmation: SSH connectivity is checked, selected source is copied,
+private transient configuration is installed at `/etc/rewatch/rewatch.env`, and
+`tools/node-install.sh` installs packages, a pinned virtual environment, the
+broker on Core and role-specific `systemd` services. Local secrets and build
+artifacts are excluded. Updates replace deployed source/configuration and
+restart services; back up configuration and `/var/lib/rewatch` first. Existing
+data/passkey directories are not intentionally deleted. No physical deployment
+is performed by the laptop demo or by the unit tests.
 
-## Licence
+### 4. Enable trusted HTTPS before LAN passkeys
 
-Apache-2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). Third-party
-inventory (fonts, dependencies, invoked-not-linked programs) in
-[`THIRD_PARTY.md`](THIRD_PARTY.md). ReWatch grew out of the ULTRON project and
-carries parts of its passkey module, local-CA script and ESP32-C3 firmware.
+The installer initially uses **HTTP on port 8080**, not automatically trusted
+HTTPS. Remote passkeys require a secure origin with a matching RP hostname.
+Resolve `rewatch.local` to Core (DNS/mDNS/hosts), generate the local CA/cert
+with `./tools/make_local_ca.sh`, trust the CA on each client, and securely install
+the server certificate/key under `/etc/rewatch/certs/`. Keep the CA private key
+off Core. Grant the `rewatch` service read access to the server key only.
+
+Configure `/etc/rewatch/rewatch.env` on Core:
+
+```dotenv
+REWATCH_HOSTNAME=rewatch.local
+REWATCH_RP_ID=rewatch.local
+REWATCH_TLS_CERT=/etc/rewatch/certs/server.crt
+REWATCH_TLS_KEY=/etc/rewatch/certs/server.key
+REWATCH_PORT=443
+DASHBOARD_URL=https://rewatch.local
+```
+
+Update Herald's `DASHBOARD_URL` too, then restart the relevant services.
+Mint an enrolment token **on Core**, using the service's data directory:
+
+```bash
+cd /opt/rewatch/pi4-core
+sudo -u rewatch env REWATCH_DATA_DIR=/var/lib/rewatch /opt/rewatch/venv/bin/python -m server.enroll
+```
+
+Open the trusted HTTPS dashboard → **First time? Register this device** →
+paste the token and approve the real passkey ceremony. Leave
+`REWATCH_ACCESS_CODE` empty to disable the weaker shared-code fallback.
+The demo preview flag has no effect on the production server.
+
+### 5. Check the installation, do not assume it
+
+On each node: `systemctl status 'rewatch-*'` and `journalctl -u <service>`.
+Confirm Sentinel capture visibility and USB writes, Core MQTT/device telemetry,
+Wi-Fi verification, C3 serial/link-loss rendering and Herald test-mail arrival.
+Perform scans only against an explicitly authorized lab target. Test ACK and
+non-ACK playbooks with the WROOM rig, then independently verify each response.
+
+## Dashboard and source map
+
+Production pages are `/` (live score, incident, room cards, topology and fleet),
+`/reports.html` (recorded events), `/debug.html` (raw vitals) and `/manual.html`
+(operator guide). The demo retains all four. Fonts and assets are self-hosted;
+the plain HTML/CSS/JavaScript frontend has no npm build or CDN dependency.
+
+```text
+common/rewatch.py           topic contract, MQTT helpers and configuration
+common/iot.py               trusted capability policy and version-change monitor
+common/summary.py           five-minute observed-system summary window
+pi3-sentinel/detector.py    network/device detection and USB evidence logging
+pi4-core/engine.py          score, incident lifecycle and response commands
+pi4-core/verifier.py        Wi-Fi HTTP telemetry consistency check
+pi4-core/indicator.py       production MQTT → USB display bridge
+pi4-core/server/            aiohttp server, WebAuthn, sessions and report store
+pi4-core/web/               production dashboard, manual, debug and reports
+pi3-herald/mailer.py        SMTP/TLS transport and alert composition
+firmware/                  C3 indicator and WROOM room simulator
+demo/                      isolated laptop simulation and recording controls
+tools/                     node installer and local-CA helper
+tests/                     detector, engine, demo, mail and installer regressions
+```
+
+## Development and validation
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/python -m pytest -o addopts='' -q
+.venv/bin/ruff check . --select F
+bash -n start.sh tools/node-install.sh demo/run.sh
+python3 firmware/tests/check_indicator.py
+# Browser tests start their own isolated server, never the user's port 8080:
+.venv/bin/python -m playwright install chromium
+.venv/bin/python tests/browser_demo.py
+# Credential-free WROOM compilation (esp32dev requires local secrets.h):
+pio run -d firmware/esp32-wroom-rig -e compile-check
+```
+
+See the [verification record](docs/BUILD-CHECKLIST.md) for actual commands and
+limitations. Firmware build success does not establish electrical correctness;
+simulation tests do not establish physical deployment or e-mail arrival.
+
+## Security, provenance and license
+
+The default broker is anonymous and unencrypted on the lab LAN. Do not expose
+MQTT or the dashboard to the Internet. Segregate the lab, configure broker auth,
+restrict topic permissions and protect transport before using untrusted devices.
+See [SECURITY.md](SECURITY.md) for trust boundaries and known prototype limits.
+
+**Apache-2.0**, as retained in [LICENSE](LICENSE) and [NOTICE](NOTICE).
+[THIRD_PARTY.md](THIRD_PARTY.md) records fonts, dependencies and reference
+provenance. ULTRON and VoidMain informed earlier work; their local repositories
+are references, not runtime dependencies. A security disclaimer does not replace
+the license or remove its rights and obligations. Monitor and control only
+systems you are authorized to operate.

@@ -1,0 +1,4 @@
+# Laptop demo uses the production decision logic, but needs no broker or capture.
+aiohttp==3.14.5
+webauthn==2.8.0
+pyserial==3.5

@@ -51,12 +51,9 @@ if [[ ! -x "$DEST/venv/bin/python" ]]; then
   python3 -m venv "$DEST/venv"
 fi
 "$DEST/venv/bin/pip" install --quiet --upgrade pip
-REQ="paho-mqtt==2.1.0"
-[[ "$ROLE" == core ]]     && REQ="$REQ aiohttp==3.10.10 aiomqtt==2.3.0 webauthn==3.0.1 pyserial==3.5"
-[[ "$ROLE" == sentinel ]] && REQ="$REQ scapy==2.6.1"
-[[ "$ROLE" == herald ]]   && REQ="$REQ"
-echo "   installing: $REQ"
-"$DEST/venv/bin/pip" install --quiet $REQ
+install -m 644 "$SRC/requirements.txt" "$DEST/requirements.txt"
+echo "   installing pinned requirements.txt"
+"$DEST/venv/bin/pip" install --quiet -r "$DEST/requirements.txt"
 chown -R rewatch:rewatch "$DEST/venv"
 
 # 5. env file (start.sh usually pushes this first; keep an existing one)
@@ -65,6 +62,10 @@ if [[ ! -f "$ENVFILE" ]]; then
   echo "   wrote $ENVFILE from template — edit SMTP/IPs as needed"
 fi
 chmod 640 "$ENVFILE"; chown root:rewatch "$ENVFILE"
+# Enrollment is operator-owned; upgrades never overwrite an existing policy.
+if [[ ! -f /etc/rewatch/devices.json ]]; then
+  install -m 640 -o root -g rewatch "$SRC/devices.example.json" /etc/rewatch/devices.json
+fi
 
 # 6. broker (core only)
 if [[ "$ROLE" == core ]]; then
@@ -86,5 +87,5 @@ for u in $UNITS; do systemctl enable "$u"; systemctl restart "$u"; done
 echo "── $ROLE up. services: $UNITS"
 if [[ "$ROLE" == core ]]; then
   echo "   register your passkey — get a code with:"
-  echo "     sudo $DEST/venv/bin/python -m server.enroll   (run from $DEST/pi4-core)"
+  echo "     cd $DEST/pi4-core && sudo -u rewatch env REWATCH_DATA_DIR=/var/lib/rewatch $DEST/venv/bin/python -m server.enroll"
 fi

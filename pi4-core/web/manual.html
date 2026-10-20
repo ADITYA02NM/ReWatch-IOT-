@@ -65,26 +65,27 @@ a 60-second half-life, so one <code>nmap</code> run peaks and then decays on its
 <table>
 <tr><th>Band</th><th>Score</th><th>LED</th><th>Meaning &amp; action</th></tr>
 <tr><td><span class="pill GREEN">GREEN</span></td><td>0–29</td><td>steady green</td><td>Normal. Monitor only.</td></tr>
-<tr><td><span class="pill BLUE">BLUE</span></td><td>—</td><td>slow blue throb</td><td>A required node (Sentinel or Herald) is offline.</td></tr>
+<tr><td><span class="pill BLUE">BLUE</span></td><td>—</td><td>0.5 Hz blue blink</td><td>A required node (Sentinel or Herald) is offline.</td></tr>
 <tr><td><span class="pill YELLOW">YELLOW</span></td><td>30–69</td><td>2 Hz yellow</td><td>Something to look at — a scan or a drifting device.</td></tr>
-<tr><td><span class="pill RED">RED</span></td><td>70–100</td><td>4 Hz red blink</td><td>Critical. Opens an incident, e-mails the owner, 2-minute countdown.</td></tr>
-<tr><td><span class="pill PURPLE">PURPLE</span></td><td>—</td><td>1 Hz purple</td><td>A RED incident nobody acknowledged in time. ReWatch acted on its own.</td></tr>
+<tr><td><span class="pill RED">RED</span></td><td>70–100</td><td>4 Hz red blink</td><td>Critical. Opens an incident, requests an e-mail, 2-minute countdown.</td></tr>
+<tr><td><span class="pill PURPLE">PURPLE</span></td><td>—</td><td>1 Hz purple</td><td>An unacknowledged incident reached its response state; verify any attempted action.</td></tr>
 </table>
 
 <h2>The 2-minute rule</h2>
 <p>When the band goes RED an incident opens with a countdown (default 120 s):</p>
 <ul>
 <li>You press <b>Acknowledge</b> on the dashboard (or the e-mail link) → the automation is cancelled; you own it.</li>
-<li>Nobody answers before the countdown ends → it is treated as unauthorised, the band goes <span class="PURPLE">PURPLE</span>, and ReWatch runs the playbook.</li>
+<li>Nobody answers before the countdown ends → the band goes <span class="PURPLE">PURPLE</span> and ReWatch attempts the configured playbook. A missed ACK is not proof of an attack.</li>
 </ul>
 
 <h2>Responses (playbooks)</h2>
 <table>
 <tr><th>Cause</th><th>Automatic response</th></tr>
-<tr><td>AC controller abnormal (e.g. forced to 35 °C)</td><td>publish <code>rewatch/iot/&lt;device&gt;/cmd {"setpoint":20}</code> — the device is driven back to its baseline.</td></tr>
+<tr><td>Enrolled AC controller abnormal (e.g. forced to 35 °C)</td><td>Request the trusted baseline through <code>rewatch/iot/&lt;device&gt;/cmd</code> only when the policy enables setpoint control. Requests are not confirmed actuation; other devices require operator review.</td></tr>
 <tr><td>network attack (scan / flood)</td><td>add the source to the nftables set <code>inet rewatch blocklist</code> on the Pi 4 (only if <code>RESPONDER_NFT=1</code>).</td></tr>
 </table>
 <div class="note">You can also press <b>Respond now</b> to run the playbook immediately instead of waiting for the countdown.</div>
+<p>The topology is a logical device inventory, not a physical switch map. Select a device for reported evidence and enrolled MQTT capabilities. Controls are observe-only by default; door control supports locking only with confirmation. Firmware changes compare reported, unattested version strings. Detection patterns cannot reliably identify the scanning tool.</p>
 
 <h2>The shelf indicator (ESP32-C3)</h2>
 <p>A NeoPixel carries the band in colour and motion; a 128×64 OLED shows the score,
@@ -93,10 +94,10 @@ the band (flat green, one beat yellow, two red, four purple). If the Pi 4 link g
 quiet the board shows a sleeping face and the pixel turns blue — never a stale green.</p>
 
 <h2>E-mail (Pi 3 Herald)</h2>
-<p>Herald sends over SMTP out of its own TL-WN722N Wi-Fi, so an alert still leaves
-the building if the wired uplink is what is under attack. You get a mail on RED
-(with the Acknowledge link), on acknowledge, on the automatic PURPLE action, and
-when it resolves. The <b>Send test e-mail</b> button on the dashboard checks the path.</p>
+<p>Herald attempts SMTP/TLS using its configured route/interface. A TL-WN722N does
+not itself guarantee an independent uplink. Alerts cover RED, acknowledgement,
+PURPLE and resolution, plus a system summary every five minutes. SMTP acceptance
+does not prove inbox delivery. Use <b>Send test e-mail</b> and check the inbox separately.</p>
 
 <h2>Evidence</h2>
 <p>Every message on the bus is logged to the pen drive on the Sentinel Pi, one
@@ -104,6 +105,6 @@ folder per day (<code>telemetry.jsonl</code>, <code>events.jsonl</code>, <code>b
 keeps a rolling SQLite copy for the dashboard and the 5-hour report. If the stick is
 missing the fleet panel shows <span class="err">usb missing</span> and logging falls back to the SD card.</p>
 
-<p class="dim" style="margin-top:30px">ReWatch IoT · Apache-2.0 · zero cloud · <a href="/">back to dashboard</a></p>
+<p class="dim" style="margin-top:30px">ReWatch IoT · Apache-2.0 · local monitoring, optional external SMTP · <a href="/">back to dashboard</a></p>
 </body>
 </html>

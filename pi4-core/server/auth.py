@@ -25,7 +25,6 @@ import logging
 import secrets
 import time
 from collections import defaultdict
-from typing import Any
 
 from aiohttp import web
 

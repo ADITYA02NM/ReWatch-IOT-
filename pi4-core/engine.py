@@ -34,14 +34,15 @@ from __future__ import annotations
 import math
 import signal
 import subprocess
+import ipaddress
 import sys
 import threading
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
 import rewatch as rw  # noqa: E402
+from iot import DevicePolicy  # noqa: E402
 
 LOG = rw.setup_logging("rewatch.engine")
 
@@ -53,6 +54,8 @@ IMPULSE_POINTS = {
     "integrity": 40.0,
     "flood": 75.0,
     "device-offline": 10.0,
+    "firmware-change": 40.0,
+    "slow-scan": 45.0,
 }
 CONDITION_POINTS = {"ok": 0.0, "warn": 45.0, "critical": 90.0}
 
@@ -99,12 +102,15 @@ class ThreatEngine:
 
     def __init__(self, *, half_life: float = 60.0, ack_timeout: float = 120.0,
                  purple_hold: float = 20.0, resolve_hold: float = 8.0,
-                 baseline_setpoint: float = 20.0) -> None:
+                 baseline_setpoint: float = 20.0, device_policy: DevicePolicy | None = None,
+                 network_enforcement: bool = True) -> None:
         self.half_life = half_life
         self.ack_timeout = ack_timeout
         self.purple_hold = purple_hold
         self.resolve_hold = resolve_hold
         self.baseline = baseline_setpoint
+        self.policy = device_policy or DevicePolicy()
+        self.network_enforcement = network_enforcement
         self.impulses: list[Impulse] = []
         self.conditions: dict[str, dict] = {}      # device -> anomaly condition
         self.devices: dict[str, dict] = {}         # device -> last telemetry (+verify)
@@ -188,16 +194,25 @@ class ThreatEngine:
     def playbook(self, inc: Incident, now: float) -> dict:
         if inc.device:
             dev = self.devices.get(inc.device, {})
-            target = float(dev.get("baseline") or self.baseline)
+            spec = self.policy.devices.get(inc.device, {})
+            if spec.get("kind") not in ("ac", "thermostat"):
+                return {"type": "notify", "device": inc.device, "ts": now,
+                        "summary": "operator review required — no safe automatic device playbook"}
+            target = self.baseline
+            try:
+                command = self.policy.command(inc.device, "setpoint", target)
+            except ValueError:
+                return {"type": "notify", "device": inc.device, "ts": now,
+                        "summary": "operator review required — device control is disabled"}
             self.out.append((rw.topic("iot", inc.device, "cmd"), {
-                "setpoint": target, "by": "rewatch-responder", "reason": inc.title,
+                **command, "by": "rewatch-responder", "reason": inc.title,
                 "incident": inc.id, "ts": now}, False))
             room = dev.get("room") or inc.device
             return {"type": "setpoint", "device": inc.device, "from": dev.get("temp_c"),
                     "to": target, "ts": now,
-                    "summary": f"{room}: AC forced back to {target:.0f} °C"}
+                    "summary": f"{room}: AC setpoint {target:.0f} °C requested (not confirmed)"}
         if inc.src:
-            ok = nft_block(inc.src)
+            ok = self.network_enforcement and nft_block(inc.src)
             return {"type": "block", "src": inc.src, "ts": now, "applied": ok,
                     "summary": f"source {inc.src} " + ("blocked on Pi4 firewall" if ok
                                                        else "flagged (nft blocking disabled)")}
@@ -330,7 +345,10 @@ class ThreatEngine:
     def _planned(self, inc: Incident) -> str:
         if inc.device:
             room = self.devices.get(inc.device, {}).get("room") or inc.device
-            return f"force {room} AC back to {self.baseline:.0f} °C"
+            spec = self.policy.devices.get(inc.device, {})
+            if spec.get("enabled") and spec.get("kind") in ("ac", "thermostat") and "setpoint" in spec.get("actions", []):
+                return f"request {room} setpoint {self.baseline:.0f} °C (not confirmed)"
+            return f"escalate {room} for operator review; no automatic actuator command"
         if inc.src:
             return f"block {inc.src} on the ReWatch firewall"
         return "escalate"
@@ -341,6 +359,13 @@ class ThreatEngine:
 
 def nft_block(ip: str) -> bool:
     if not rw.env_bool("RESPONDER_NFT", False):
+        return False
+    try:
+        if not isinstance(ip, str):
+            return False
+        ip = str(ipaddress.IPv4Address(ip))
+    except ipaddress.AddressValueError:
+        LOG.warning("refused non-IPv4 firewall source")
         return False
     try:
         subprocess.run(["nft", "add", "element", "inet", "rewatch", "blocklist", f"{{ {ip} }}"],
@@ -357,7 +382,8 @@ def main() -> None:
     eng = ThreatEngine(half_life=rw.env_float("ENGINE_HALF_LIFE_S", 60),
                        ack_timeout=rw.env_float("ACK_TIMEOUT_S", 120),
                        purple_hold=rw.env_float("PURPLE_HOLD_S", 20),
-                       baseline_setpoint=rw.env_float("AC_BASELINE_C", 20))
+                       baseline_setpoint=rw.env_float("AC_BASELINE_C", 20),
+                       device_policy=DevicePolicy.from_env())
     lock = threading.Lock()
 
     def on_msg(t, d):

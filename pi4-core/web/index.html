@@ -8,6 +8,7 @@
 <title>ReWatch IoT</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/rewatch.css">
+<link rel="stylesheet" href="assets/devices.css">
 </head>
 <body>
 
@@ -110,8 +111,9 @@
 
     <!-- topology -->
     <section class="panel p-topo" aria-label="IoT topology">
-      <h2>IoT topology <small id="topo-sub">switch ports 1–4 · Wi-Fi</small></h2>
-      <svg id="topo" viewBox="0 0 760 470" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Network topology"></svg>
+      <h2>IoT topology <small id="topo-sub">logical relationships</small></h2>
+      <p id="device-status" role="status">Loading device policy…</p>
+      <div class="topology-layout"><div id="inventory-map" aria-label="Selectable IoT devices"></div><aside id="device-detail" aria-label="Selected device"></aside></div>
     </section>
 
     <!-- rooms -->
@@ -159,6 +161,7 @@
 <div id="toast" aria-live="polite"></div>
 
 <script src="assets/core.js"></script>
+<script src="assets/devices.js"></script>
 <script src="assets/live.js"></script>
 </body>
 </html>

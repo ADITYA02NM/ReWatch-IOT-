@@ -235,7 +235,7 @@
   // ── rooms ───────────────────────────────────────────────────────────────
   function renderRooms() {
     const box = $("#rooms"); if (!box) return;
-    const keys = Object.keys(S.telemetry).sort();
+    const keys = Object.keys(S.telemetry).filter((k) => ["ac", "thermostat"].includes(S.telemetry[k].kind || "ac")).sort();
     $("#rooms-sub").textContent = keys.length ? keys.length + " online" : "";
     if (!keys.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">No IoT devices reporting yet.<br><code>rewatch/iot/&lt;device&gt;/telemetry</code></div>`; return; }
     box.innerHTML = "";
@@ -247,7 +247,7 @@
       const vch = v.ok === true ? '<span class="vchip ok">wifi ✓</span>' : v.ok === false ? '<span class="vchip bad">wifi ✗</span>' : '<span class="vchip">wifi —</span>';
       card.innerHTML = `<div class="rn"><span>${esc(t.room || k)}</span>${vch}</div>
         <div class="rt">${temp}<small>°C</small></div>
-        <div class="rs"><span>set ${t.setpoint != null ? t.setpoint + "°" : "—"}</span><span>${t.power || (offline ? "offline" : "on")}</span></div>
+        <div class="rs"><span>set ${esc(t.setpoint != null ? t.setpoint + "°" : "—")}</span><span>${esc(t.power || (offline ? "offline" : "on"))}</span></div>
         <canvas width="200" height="36"></canvas>`;
       box.appendChild(card);
       sparkRoom(card.querySelector("canvas"), k, level);
@@ -268,50 +268,8 @@
 
   // ── topology ────────────────────────────────────────────────────────────
   function renderTopo() {
-    const svg = $("#topo"); if (!svg) return;
-    const NS = "http://www.w3.org/2000/svg";
-    const nodes = [
-      { id: "router", x: 330, y: 20, w: 150, h: 36, t: "ROUTER", s: "uplink · port 1" },
-      { id: "switch", x: 300, y: 92, w: 160, h: 36, t: "8-PORT SWITCH", s: "production LAN" },
-      { id: "sentinel", x: 40, y: 190, w: 180, h: 50, t: "PI 3 · SENTINEL", s: ".2 · detect+log" },
-      { id: "core", x: 290, y: 190, w: 180, h: 50, t: "PI 4 · CORE", s: ".1 · engine" },
-      { id: "herald", x: 540, y: 190, w: 180, h: 50, t: "PI 3 · HERALD", s: ".3 · smtp" },
-      { id: "indicator", x: 290, y: 300, w: 180, h: 44, t: "ESP32-C3", s: "oled · neopixel" },
-      { id: "rig", x: 540, y: 300, w: 180, h: 44, t: "ESP32-WROOM", s: "room rig" },
-    ];
-    // rooms along the bottom from telemetry
-    const rks = Object.keys(S.telemetry).sort().slice(0, 4);
-    rks.forEach((k, i) => nodes.push({ id: "room:" + k, x: 30 + i * 180, y: 392, w: 160, h: 50, t: (S.telemetry[k].room || k).toUpperCase(), s: (S.telemetry[k].temp_c != null ? S.telemetry[k].temp_c.toFixed(1) + "°C" : ""), room: k }));
-    const edges = [
-      ["router", "switch"], ["switch", "sentinel"], ["switch", "core"], ["switch", "herald"],
-      ["core", "indicator", "usb"],
-    ];
-    rks.forEach((k) => edges.push(["rig", "room:" + k, "wifi"]));
-    rks.forEach((k) => edges.push(["core", "room:" + k, "wifi"]));
-    const by = Object.fromEntries(nodes.map((n) => [n.id, n]));
-    const cx = (n) => n.x + n.w / 2, cy = (n) => n.y + n.h / 2;
-
-    let h = `<rect class="t-zone" x="12" y="150" width="736" height="120" rx="8"/><text class="t-zl" x="20" y="166">PRODUCTION · 192.168.100.0/24</text>`;
-    for (const [a, b, kind] of edges) {
-      const n1 = by[a], n2 = by[b]; if (!n1 || !n2) continue;
-      const hot = (kind === "wifi" && a === "core") && topoHot(b);
-      h += `<path class="t-edge ${kind === "wifi" ? "wifi" : ""} ${hot ? "hot" : ""}" d="M${cx(n1)} ${n1.y + n1.h} C ${cx(n1)} ${(n1.y + n1.h + n2.y) / 2}, ${cx(n2)} ${(n1.y + n1.h + n2.y) / 2}, ${cx(n2)} ${n2.y}"/>`;
-    }
-    for (const n of nodes) {
-      const cls = nodeClass(n);
-      const led = n.room ? "" : `<circle class="led" cx="${n.x + n.w - 12}" cy="${n.y + 12}" r="4" fill="${nodeLed(n.id)}"/>`;
-      h += `<g class="t-node ${cls}"><rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="7"/>${led}<text class="tt" x="${n.x + 12}" y="${n.y + 21}">${esc(n.t)}</text><text class="ts" x="${n.x + 12}" y="${n.y + 36}">${esc(n.s)}</text></g>`;
-    }
-    svg.innerHTML = h;
+    window.ReWatchDevices?.update(S);
   }
-  function nodeClass(n) {
-    if (n.room) { const lv = (S.devices[n.room] || {}).level; const off = (Date.now() / 1000 - (S.telemetry[n.room].rx || 0)) > 15; return off ? "off" : lv === "critical" ? "crit" : lv === "warn" ? "warn" : (S.incident && S.incident.device === n.room && S.incident.action ? "fix" : ""); }
-    if (["core", "sentinel", "herald"].includes(n.id)) return isUp(n.id) ? "" : "off";
-    if (n.id === "indicator" || n.id === "rig") return isUp(n.id) ? "" : "off";
-    return "";
-  }
-  function nodeLed(id) { if (id === "core") return BANDS[S.band] || BANDS.BLUE; return isUp(id) ? BANDS.GREEN : "#444"; }
-  function topoHot(b) { return S.incident && S.incident.action && ("room:" + S.incident.device) === b; }
 
   // ── events feed ─────────────────────────────────────────────────────────
   function pushEvent(e) { S.events.push(e); if (S.events.length > 250) S.events.shift(); renderEvents(); }
@@ -319,10 +277,10 @@
     const ul = $("#feed"); if (!ul) return;
     const f = S.filter;
     const match = (e) => f === "all" ? true
-      : f === "detect" ? ["portscan", "arpsweep", "pingsweep", "flood", "newdevice", "anomaly", "integrity", "device-offline"].includes(e.kind)
+      : f === "detect" ? ["portscan", "arpsweep", "pingsweep", "flood", "newdevice", "anomaly", "integrity", "device-offline", "firmware-change", "slow-scan"].includes(e.kind)
       : f === "incident" ? ["alert", "incident", "action", "command"].includes(e.kind)
       : f === "mail" ? e.kind === "mail"
-      : f === "system" ? ["node", "rig"].includes(e.kind) : true;
+      : f === "system" ? ["node", "rig", "summary"].includes(e.kind) : true;
     const list = S.events.filter(match).slice(-120).reverse();
     $("#ev-count").textContent = S.events.length + " total";
     ul.innerHTML = "";
@@ -346,12 +304,12 @@
       const n = el("div", "node " + (on ? "on" : "off"));
       let detail = "";
       if (h) {
-        if (id === "sentinel") detail = `usb <span class="${h.usb ? "ok" : "bad"}">${h.usb ? "mounted" : "missing"}</span> · ${h.logged_lines || 0} logged · ${h.pkts || 0} pkt`;
+        if (id === "sentinel") detail = `usb <span class="${h.usb ? "ok" : "bad"}">${h.usb ? "mounted" : "missing"}</span> · ${esc(h.logged_lines || 0)} logged · ${esc(h.pkts || 0)} pkt`;
         else if (id === "herald") detail = `smtp <span class="${h.configured ? "ok" : "bad"}">${h.configured ? "ready" : "unset"}</span>${h.last_ok === false ? ' · <span class="bad">last failed</span>' : h.last_ok ? ' · <span class="ok">last ok</span>' : ""}`;
-        else if (id === "core") detail = `band ${h.band || "?"} · score ${h.score != null ? h.score : "?"}`;
-        else if (id === "verifier") detail = `${h.polls || 0} checks · ${h.mismatches || 0} mismatch`;
+        else if (id === "core") detail = `band ${esc(h.band || "?")} · score ${esc(h.score != null ? h.score : "?")}`;
+        else if (id === "verifier") detail = `${esc(h.polls || 0)} checks · ${esc(h.mismatches || 0)} mismatch`;
         else if (id === "indicator") detail = `serial <span class="${h.link ? "ok" : "bad"}">${h.link ? "open" : "closed"}</span>`;
-        else detail = h.role || "";
+        else detail = esc(h.role || "");
       } else detail = "no heartbeat";
       n.innerHTML = `<div class="nh"><i></i>${name}</div><div class="nr">${role}</div><div class="nk">${detail}</div>`;
       box.appendChild(n);

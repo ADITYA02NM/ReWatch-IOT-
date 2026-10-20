@@ -5,7 +5,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "common"))
 sys.path.insert(0, str(ROOT / "pi3-sentinel"))
-import rewatch as rw  # noqa: E402
 from detector import ScanDetector, ScanConfig, AnomalyDetector, AcProfile, DeviceRegistry  # noqa: E402
 
 
@@ -57,3 +56,29 @@ def test_new_device_after_learning(tmp_path):
     assert ev and ev["kind"] == "newdevice"
     # second sighting is silent
     assert reg.see("aa:bb:cc:dd:ee:ff", "10.0.0.50") is None
+
+
+def test_non_nmap_stealth_probe_and_slow_scan():
+    for proto in ("tcp-fin", "tcp-null", "tcp-xmas"):
+        detector = ScanDetector(ScanConfig(cooldown_s=0))
+        events = []
+        for port in range(20):
+            events += detector.feed(proto, "10.0.0.8", "10.0.0.1", port, t=100)
+        assert any(e["kind"] == "portscan" for e in events)
+        assert all("tool_hint" not in e["detail"] for e in events)
+    detector = ScanDetector(ScanConfig(cooldown_s=0))
+    events = []
+    for port in range(40):
+        events += detector.feed("tcp-syn", "10.0.0.8", "10.0.0.1", port, t=100 + port * 5)
+    assert any(e["kind"] == "slow-scan" for e in events)
+
+
+def test_non_ac_profiles_and_invalid_numeric_input():
+    detector = AnomalyDetector()
+    for device, kind, field in [("cam", "camera", "tamper"), ("lock", "door", "forced_open"),
+                                ("smoke", "sensor", "smoke")]:
+        condition = detector.feed({"device": device, "kind": kind, field: True}, t=100)
+        assert condition["level"] == "critical"
+        assert detector.feed({"device": device, "kind": kind, field: False}, t=101)["level"] == "ok"
+    assert detector.feed({"device": "plug", "kind": "plug", "power_w": 3000}, t=100)["level"] == "critical"
+    assert detector.feed({"device": "ac", "temp_c": float("nan")}, t=100) is None

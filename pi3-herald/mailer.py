@@ -33,6 +33,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
 import rewatch as rw  # noqa: E402
+from summary import ReportWindow  # noqa: E402
 
 LOG = rw.setup_logging("rewatch.herald")
 
@@ -49,7 +50,9 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
     title = d.get("title") or "Critical threat"
     inc = d.get("id") or d.get("incident") or ""
     link = f"{dash.rstrip('/')}/?incident={inc}" if inc else dash
-    mins = max(1, round(float(d.get("ack_timeout", 120)) / 60))
+    seconds = max(1, round(float(d.get("ack_timeout", 120))))
+    duration = (f"{seconds // 60} minute{'s' if seconds != 60 else ''}"
+                if seconds % 60 == 0 else f"{seconds} second{'s' if seconds != 1 else ''}")
     if kind == "alert":
         band = "RED"
         subject = f"[ReWatch] RED — {title}"
@@ -60,7 +63,7 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
             f"When         : {_fmt(d.get('ts'))}",
             f"Risk score   : {d.get('score', '?')}/100",
             "",
-            f"If you don't do anything in {mins} minute{'s' if mins != 1 else ''}, ReWatch will "
+            f"If you don't do anything in {duration}, ReWatch will "
             f"automatically take action: {d.get('planned_action') or 'escalate'}.",
             "",
             "Or go back to your system dashboard and click Acknowledge:",
@@ -75,7 +78,7 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
     elif kind == "auto":
         band = "PURPLE"
         action = (d.get("action") or {}).get("summary", "automated response")
-        subject = f"[ReWatch] PURPLE — no response, automatic action taken"
+        subject = "[ReWatch] PURPLE — no response, automatic action taken"
         lines = ["Nobody acknowledged the alert in time, so it was treated as unauthorised.",
                  "", f"Incident     : {title}", f"Action taken : {action}",
                  f"At           : {_fmt((d.get('action') or {}).get('ts'))}", "",
@@ -85,6 +88,23 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
         subject = f"[ReWatch] Resolved — {title}"
         lines = [f"Incident {inc} is resolved. Everything is back to normal.", "",
                  "The last 5 hours: " + dash.rstrip("/") + "/reports.html"]
+    elif kind == "summary":
+        band = d.get("band", "BLUE")
+        subject = f"[ReWatch] 5-minute system summary — {band}"
+        lines = ["System summary for the preceding five-minute window.",
+                 f"Window       : {_fmt(d.get('from'))} – {_fmt(d.get('to'))}",
+                 f"State fresh  : {d.get('state_received', False)}",
+                 f"Risk         : {band} / {d.get('score', '?')} (peak {d.get('peak', '?')})",
+                 f"Devices seen : {d.get('devices', 0)}",
+                 f"Nodes seen   : {d.get('nodes_seen', 0)}",
+                 f"Offline/stale: {', '.join(d.get('offline') or []) or 'none reported'}",
+                 f"Detections   : {d.get('detections', 0)}",
+                 f"Responses attempted: {d.get('responses', 0)}",
+                 f"Incident     : {d.get('incident', 'none')}", "",
+                 "These are observed/reported counts, not proof of complete network coverage.",
+                 "The last 5 hours: " + dash.rstrip("/") + "/reports.html"]
+        if d.get("simulation"):
+            lines.insert(0, "SIMULATION — not physical network evidence.")
     else:
         band = "GREEN"
         subject = "[ReWatch] Test e-mail"
@@ -119,22 +139,26 @@ class Herald:
         self.iface = rw.env("SMTP_IFACE", "wlan1")
         self.dash = rw.env("DASHBOARD_URL", "https://rewatch.local")
         self.q: queue.Queue = queue.Queue()
+        self.summary = ReportWindow()
         self.sent: set[tuple[str, str]] = set()
         self.last = {"ok": None, "ts": None, "error": ""}
         self.bus = rw.Bus("herald", subscriptions=[rw.topic("alert", "+"),
                                                    rw.topic("incident", "+"),
-                                                   rw.topic("mail", "test")],
+                                                   rw.topic("mail", "test"), rw.topic("threat", "state"),
+                                                   rw.topic("health", "+"), rw.topic("detect", "#"),
+                                                   rw.topic("action", "+")],
                           on_message=self.on_msg, heartbeat_info=self.hb)
 
     def hb(self) -> dict:
         return {"role": "smtp alerts", "iface": self.iface, "iface_ip": rw.iface_ip(self.iface),
-                "smtp": f"{self.host}:{self.port}", "configured": bool(self.user and self.to),
+                "smtp": f"{self.host}:{self.port}", "configured": bool(self.user and self.password and self.to),
                 "last_ok": self.last["ok"], "last_ts": self.last["ts"],
                 "last_error": self.last["error"][:120]}
 
     def on_msg(self, t: str, d) -> None:
         if not isinstance(d, dict):
             return
+        self.summary.observe(t, d, rw.now())
         if t == rw.topic("mail", "test"):
             self.q.put(("test", {**d, "id": "test", "via": self.iface}))
         elif t.startswith(rw.topic("alert")):
@@ -149,12 +173,11 @@ class Herald:
         key = (inc, kind)
         if kind != "test" and key in self.sent:
             return
-        self.sent.add(key)
         subject, text, page = compose(kind, d, self.dash)
         result = {"id": inc, "kind": kind, "subject": subject, "to": self.to, "ts": rw.now(),
                   "via": self.iface}
-        if not (self.user and self.to):
-            result.update(ok=False, error="SMTP not configured (SMTP_USER / ALERT_TO)")
+        if not (self.user and self.password and self.to):
+            result.update(ok=False, error="SMTP not configured (SMTP_USER / SMTP_PASS / ALERT_TO)")
             LOG.error(result["error"])
         else:
             msg = EmailMessage()
@@ -176,14 +199,24 @@ class Herald:
                     s.starttls(context=ctx)
                 with s:
                     s.login(self.user, self.password)
-                    s.send_message(msg)
-                result.update(ok=True, src_ip=src)
+                    refused = s.send_message(msg)
+                result.update(ok=not bool(refused), src_ip=src)
+                if refused:
+                    result["error"] = "SMTP rejected one or more recipients"
                 LOG.info("mail '%s' -> %s (via %s)", subject, self.to, src or "default route")
             except (OSError, smtplib.SMTPException) as e:
-                result.update(ok=False, error=str(e)[:200])
-                LOG.error("mail failed: %s", e)
+                error = ("SMTP authentication rejected; check the new app password"
+                         if isinstance(e, smtplib.SMTPAuthenticationError)
+                         else f"SMTP transport failed ({type(e).__name__}); check host, port and connectivity")
+                result.update(ok=False, error=error)
+                LOG.error("%s", error)
+        if result["ok"] and kind != "test":
+            self.sent.add(key)
+            if len(self.sent) > 4096:
+                self.sent = {key}
         self.last = {"ok": result["ok"], "ts": result["ts"], "error": result.get("error", "")}
-        self.bus.publish(rw.topic("mail", inc or "test"), result)
+        # Results must never match the mail/test request subscription.
+        self.bus.publish(rw.topic("mail", "result", inc or "test"), result)
 
     def run(self) -> None:
         stop = threading.Event()
@@ -203,7 +236,10 @@ class Herald:
 
         threading.Thread(target=worker, daemon=True).start()
         LOG.info("herald up — %s:%s via %s -> %s", self.host, self.port, self.iface, self.to)
-        stop.wait()
+        while not stop.wait(1):
+            report = self.summary.poll(rw.now())
+            if report:
+                self.q.put(("summary", report))
         self.bus.stop()
 
 

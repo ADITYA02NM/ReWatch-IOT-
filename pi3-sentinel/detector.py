@@ -38,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
 import rewatch as rw  # noqa: E402
+from iot import DevicePolicy, FirmwareMonitor, number, valid_id  # noqa: E402
 
 LOG = rw.setup_logging("rewatch.sentinel")
 
@@ -54,6 +55,8 @@ class ScanConfig:
     icmp_targets: int = 8
     flood_pps: float = 400.0     # packets/second from one source, over 2 s
     cooldown_s: float = 30.0     # one event per source per kind per cooldown
+    slow_window_s: float = 300.0
+    slow_ports: int = 30
 
 
 class ScanDetector:
@@ -62,11 +65,12 @@ class ScanDetector:
     def __init__(self, cfg: ScanConfig | None = None, ignore: set[str] | None = None) -> None:
         self.cfg = cfg or ScanConfig()
         self.ignore = ignore or set()
-        self._tcp: dict[str, deque] = defaultdict(deque)   # src -> (ts, dst, port)
-        self._udp: dict[str, deque] = defaultdict(deque)
-        self._arp: dict[str, deque] = defaultdict(deque)   # src -> (ts, target)
-        self._icmp: dict[str, deque] = defaultdict(deque)
-        self._rate: dict[str, deque] = defaultdict(deque)  # src -> ts
+        self._tcp: dict[str, deque] = defaultdict(lambda: deque(maxlen=4096))
+        self._slow: dict[str, deque] = defaultdict(lambda: deque(maxlen=4096))
+        self._udp: dict[str, deque] = defaultdict(lambda: deque(maxlen=4096))
+        self._arp: dict[str, deque] = defaultdict(lambda: deque(maxlen=4096))
+        self._icmp: dict[str, deque] = defaultdict(lambda: deque(maxlen=4096))
+        self._rate: dict[str, deque] = defaultdict(lambda: deque(maxlen=4096))
         self._last: dict[tuple[str, str], float] = {}
 
     @staticmethod
@@ -76,7 +80,7 @@ class ScanDetector:
 
     def _cool(self, kind: str, src: str, t: float) -> bool:
         k = (kind, src)
-        if t - self._last.get(k, 0.0) < self.cfg.cooldown_s:
+        if k in self._last and t - self._last[k] < self.cfg.cooldown_s:
             return False
         self._last[k] = t
         return True
@@ -86,6 +90,11 @@ class ScanDetector:
         """proto: tcp-syn | udp | arp-req | icmp-echo | any"""
         if not src or src in self.ignore:
             return []
+        if src not in self._rate and len(self._rate) >= 2048:
+            oldest = next(iter(self._rate))
+            for counters in (self._rate, self._tcp, self._slow, self._udp, self._arp, self._icmp):
+                counters.pop(oldest, None)
+            self._last = {key: ts for key, ts in self._last.items() if key[1] != oldest}
         t = rw.now() if t is None else t
         out: list[dict] = []
         c = self.cfg
@@ -100,7 +109,13 @@ class ScanDetector:
                 "flood", "critical", f"Packet flood from {src} ({len(rq) // 2} pkt/s)",
                 src=src, detail={"pps": len(rq) // 2}))
 
-        if proto == "tcp-syn":
+        if proto in ("tcp-syn", "tcp-fin", "tcp-null", "tcp-xmas"):
+            slow = self._slow[src]
+            slow.append((t, dst, port))
+            self._trim(slow, t - c.slow_window_s)
+            if len({(d, p) for _, d, p in slow}) >= c.slow_ports and self._cool("slow", src, t):
+                out.append(rw.make_event("slow-scan", "high", f"Slow TCP probe pattern from {src}",
+                                        src=src, detail={"window_s": c.slow_window_s, "attribution": "unknown"}))
             q = self._tcp[src]
             q.append((t, dst, port))
             self._trim(q, t - c.window_s)
@@ -113,7 +128,7 @@ class ScanDetector:
                     f"TCP port scan from {src} — {len(ports)} ports on {len(hosts)} host(s)",
                     src=src, target=", ".join(hosts[:4]),
                     detail={"proto": "tcp", "ports": sample, "count": len(ports),
-                            "hosts": hosts[:8], "tool_hint": "nmap -sS/-sT"}))
+                            "hosts": hosts[:8], "probe": proto, "attribution": "unknown"}))
         elif proto == "udp":
             q = self._udp[src]
             q.append((t, dst, port))
@@ -123,7 +138,7 @@ class ScanDetector:
                 out.append(rw.make_event(
                     "portscan", "high", f"UDP port scan from {src} — {len(ports)} ports",
                     src=src, target=dst, detail={"proto": "udp", "count": len(ports),
-                                                 "tool_hint": "nmap -sU"}))
+                                                  "attribution": "unknown"}))
         elif proto == "arp-req":
             q = self._arp[src]
             q.append((t, dst))
@@ -133,7 +148,7 @@ class ScanDetector:
                 out.append(rw.make_event(
                     "arpsweep", "medium",
                     f"Host-discovery sweep from {src} — {len(targets)} addresses probed",
-                    src=src, detail={"count": len(targets), "tool_hint": "nmap -sn / arp-scan"}))
+                    src=src, detail={"count": len(targets), "attribution": "unknown"}))
         elif proto == "icmp-echo":
             q = self._icmp[src]
             q.append((t, dst))
@@ -224,22 +239,35 @@ class DeviceState:
 
 
 class AnomalyDetector:
-    def __init__(self, profile: AcProfile | None = None) -> None:
+    def __init__(self, profile: AcProfile | None = None, device_profiles: dict | None = None) -> None:
         self.p = profile or AcProfile()
+        self.profiles = device_profiles or {}
         self.devices: dict[str, DeviceState] = {}
 
     def feed(self, tel: dict, t: float | None = None) -> dict | None:
         """Returns a condition dict when the level changes (or every 5 s while
         not ok) — otherwise None."""
-        dev = str(tel.get("device") or "")
-        if not dev:
+        dev = tel.get("device")
+        if not valid_id(dev):
             return None
+        if dev not in self.devices and len(self.devices) >= 1024:
+            # Unknown senders cannot consume capacity reserved for enrolled devices.
+            victim = next((key for key in self.devices if key not in self.profiles), None)
+            if dev not in self.profiles or victim is None:
+                return None
+            del self.devices[victim]
+        t = rw.now() if t is None else t
+        kind = self.profiles.get(dev, {}).get("kind", tel.get("kind", "ac"))
+        if kind not in ("ac", "thermostat"):
+            return self._general(dev, kind, tel, t)
         try:
             temp = float(tel.get("temp_c"))
         except (TypeError, ValueError):
             return None
+        if not number(temp):
+            return None
         sp = tel.get("setpoint")
-        sp = float(sp) if isinstance(sp, (int, float)) else None
+        sp = float(sp) if number(sp) else None
         t = rw.now() if t is None else t
         st = self.devices.setdefault(dev, DeviceState())
         first = st.last_ts == 0.0 and st.last_temp is None
@@ -284,6 +312,30 @@ class AnomalyDetector:
                 "kind": st.info.get("kind"), "active": level != "ok", "ts": t,
                 "changed": changed,
             }
+        return None
+
+    def _general(self, dev: str, kind: str, tel: dict, t: float) -> dict | None:
+        st = self.devices.setdefault(dev, DeviceState())
+        first = not st.info
+        st.info = {"kind": kind, "room": tel.get("room")}
+        st.last_ts, st.offline = t, False
+        level, reason = "ok", "No configured anomaly reported"
+        critical = [field for field in ("tamper", "forced_open", "smoke", "leak", "overload")
+                    if tel.get(field) is True]
+        watts = tel.get("power_w")
+        maximum = self.profiles.get(dev, {}).get("max_power_w", 2000)
+        if critical:
+            level, reason = "critical", "Reported " + ", ".join(critical)
+        elif kind == "plug" and number(watts) and watts > maximum:
+            level, reason = "critical", f"Reported power {watts:g} W exceeds configured {maximum:g} W"
+        elif tel.get("online") is False or tel.get("battery_low") is True:
+            level, reason = "warn", "Device reports offline or low battery"
+        changed = first or st.level != level
+        st.level, st.reason = level, reason
+        if changed or (level != "ok" and t - st.last_pub >= 5):
+            st.last_pub = t
+            return {"device": dev, "kind": kind, "room": tel.get("room"), "level": level,
+                    "reason": reason, "active": level != "ok", "changed": changed, "ts": t}
         return None
 
     def sweep_offline(self, timeout_s: float = 15.0, t: float | None = None) -> list[dict]:
@@ -358,9 +410,11 @@ class Sentinel:
         reg_dir.mkdir(parents=True, exist_ok=True)
         self.registry = DeviceRegistry(reg_dir / "known_devices.json",
                                        rw.env_float("SENTINEL_LEARN_S", 300))
+        policy = DevicePolicy.from_env()
+        self.firmware = FirmwareMonitor(policy)
         self.anomaly = AnomalyDetector(AcProfile(
             normal_max=rw.env_float("AC_NORMAL_MAX", 26.0),
-            crit_temp_hi=rw.env_float("AC_CRITICAL_C", 32.0)))
+            crit_temp_hi=rw.env_float("AC_CRITICAL_C", 32.0)), policy.devices)
         self.pkts = 0
         self.sniffing = False
         self.detections = 0
@@ -392,7 +446,13 @@ class Sentinel:
             return
         rec = {"topic": t, "rx": rw.now(), "d": d}
         if t.endswith("/telemetry"):
+            parts = t.split("/")
+            if len(parts) != 4 or parts[1] != "iot" or not valid_id(parts[2]):
+                return
+            d = {**d, "device": parts[2]}
             self.logger.write("telemetry.jsonl", rec)
+            for event in self.firmware.feed(d, rw.now()):
+                self.emit(event)
             cond = self.anomaly.feed(d)
             if cond:
                 if cond["changed"]:
@@ -435,14 +495,21 @@ class Sentinel:
                     fl = int(pkt[TCP].flags)
                     if fl & 0x02 and not fl & 0x10:  # SYN without ACK
                         evs += self.scan.feed("tcp-syn", ip.src, ip.dst, int(pkt[TCP].dport))
+                    elif fl in (0, 1, 0x29):
+                        proto = {0: "tcp-null", 1: "tcp-fin", 0x29: "tcp-xmas"}[fl]
+                        evs += self.scan.feed(proto, ip.src, ip.dst, int(pkt[TCP].dport))
                     else:
                         evs += self.scan.feed("any", ip.src)
                 elif pkt.haslayer(UDP):
                     dport = int(pkt[UDP].dport)
                     if dport not in (53, 67, 68, 123, 137, 138, 1900, 5353, 1883):
                         evs += self.scan.feed("udp", ip.src, ip.dst, dport)
+                    else:
+                        evs += self.scan.feed("any", ip.src)
                 elif pkt.haslayer(ICMP) and int(pkt[ICMP].type) == 8:
                     evs += self.scan.feed("icmp-echo", ip.src, ip.dst)
+                else:
+                    evs += self.scan.feed("any", ip.src)
                 if pkt.haslayer(Ether) and ip.src.startswith(self.own_ip.rsplit(".", 1)[0] + "."):
                     nd = self.registry.see(pkt[Ether].src, ip.src)
                     if nd:
@@ -451,7 +518,7 @@ class Sentinel:
                 self.emit(ev)
 
         bpf = rw.env("SENTINEL_BPF",
-                     "arp or icmp or (tcp[tcpflags] & tcp-syn != 0) or (udp and not port 1883)")
+                     "arp or ip")
         while True:
             try:
                 self.sniffing = True

@@ -33,9 +33,11 @@ from aiohttp import WSMsgType, web
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "common"))
 import rewatch as rw  # noqa: E402
+from iot import DevicePolicy  # noqa: E402
 
 from .auth import SESSION_COOKIE, add_auth_routes  # noqa: E402
 from .auth_db import AuthDB  # noqa: E402
+from .devices import add_device_routes  # noqa: E402
 
 LOG = logging.getLogger("rewatch.server")
 VERSION = "1.0.0"
@@ -103,12 +105,12 @@ class Normaliser:
                     "title": ("Manual" if d.get("manual") else "Automatic") + " response — "
                     + d.get("summary", ""), "device": d.get("device", ""),
                     "src": d.get("src", ""), "incident": d.get("incident"), "node": "core"}
-        if head == "mail" and len(p) >= 3:
-            ok = d.get("ok")
+        if head == "mail" and len(p) >= 4 and p[2] == "result":
+            ok = d.get("ok") is True
             to = ", ".join(d.get("to") or [])
-            return {**base, "id": f"ml-{p[2]}-{d.get('kind')}-{int(ts)}", "kind": "mail",
+            return {**base, "id": f"ml-{p[3]}-{d.get('kind')}-{int(ts)}", "kind": "mail",
                     "sev": "info" if ok else "medium",
-                    "title": (f"E-mail sent to {to} — “{d.get('subject', '')}”" if ok
+                    "title": (f"SMTP accepted for {to} — “{d.get('subject', '')}” (delivery not confirmed)" if ok
                               else f"E-mail failed — {d.get('error', 'unknown error')}"),
                     "incident": d.get("id"), "device": "", "src": "", "node": "herald"}
         if head == "verify" and d.get("alarm"):
@@ -129,7 +131,8 @@ class Normaliser:
         if head == "iot" and len(p) >= 4 and p[3] == "cmd":
             return {**base, "id": f"cm-{p[2]}-{int(ts * 1000)}", "kind": "command", "sev": "info",
                     "device": p[2], "src": "", "node": "core",
-                    "title": f"Command → {p[2]}: setpoint {d.get('setpoint')} °C ({d.get('by', '')})"}
+                    "title": f"Command requested → {p[2]}: {d.get('action', 'setpoint')} "
+                             f"{d.get('value', d.get('setpoint'))} ({d.get('by', '')})"}
         if head == "rig" and len(p) >= 3 and p[2] == "cmd":
             return {**base, "id": f"rg-{int(ts * 1000)}", "kind": "rig", "sev": "info",
                     "device": d.get("device", ""), "src": "", "node": "rig",
@@ -415,6 +418,8 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 m = json.loads(msg.data)
             except json.JSONDecodeError:
                 continue
+            if not isinstance(m, dict):
+                continue
             op = m.get("op")
             if op == "ping":
                 await ws.send_str(json.dumps({"t": "pong", "c": m.get("c"), "s": time.time()}))
@@ -447,7 +452,7 @@ async def on_cleanup(app: web.Application) -> None:
 def build_app() -> web.Application:
     rw.load_env()
     data = Path(rw.env("REWATCH_DATA_DIR", "/var/lib/rewatch"))
-    app = web.Application(middlewares=[security_headers])
+    app = web.Application(middlewares=[security_headers], client_max_size=65536)
     tls = bool(rw.env("REWATCH_TLS_CERT") and rw.env("REWATCH_TLS_KEY"))
     app["tls"] = tls
     app["hub"] = Hub(Store(data / "rewatch.db"))
@@ -464,6 +469,7 @@ def build_app() -> web.Application:
     app["auth_secure_cookies"] = tls
     app["demo_code"] = rw.env("REWATCH_ACCESS_CODE", "")
     add_auth_routes(app)
+    add_device_routes(app, DevicePolicy.from_env(), lambda: app["hub"].telemetry, app["hub"].publish)
     for path in PAGES:
         app.router.add_get(path, page)
     app.router.add_get("/assets/{tail:.+}", asset)

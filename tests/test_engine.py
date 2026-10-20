@@ -8,6 +8,7 @@ sys.path.insert(0, str(ROOT / "common"))
 sys.path.insert(0, str(ROOT / "pi4-core"))
 import rewatch as rw            # noqa: E402
 from engine import ThreatEngine  # noqa: E402
+from iot import DevicePolicy  # noqa: E402
 
 
 def anomaly(dev, level, temp, room="Room 1", setpoint=20):
@@ -35,7 +36,9 @@ def test_portscan_impulse_decays():
 
 
 def test_critical_opens_incident_then_auto_responds():
-    eng = ThreatEngine(ack_timeout=5, purple_hold=5, resolve_hold=2)
+    policy = DevicePolicy({"room1-ac": {"kind": "ac", "adapter": "mqtt", "enabled": True,
+                                       "actions": ["setpoint"]}})
+    eng = ThreatEngine(ack_timeout=5, purple_hold=5, resolve_hold=2, device_policy=policy)
     # device goes critical -> condition 90 -> RED
     eng.on_message(rw.topic("iot", "room1-ac", "telemetry"),
                    {"device": "room1-ac", "room": "Room 1", "temp_c": 35, "setpoint": 20}, now=0)
