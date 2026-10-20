@@ -1,5 +1,2 @@
-# ReWatch dashboard (Pi 4). Pinned.
-aiohttp==3.10.10
-aiomqtt==2.3.0
-webauthn==3.0.1
-paho-mqtt==2.1.0
+# Use the same verified runtime pins as the installer; avoid a stale second set.
+-r ../../requirements.txt

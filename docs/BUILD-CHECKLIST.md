@@ -18,7 +18,7 @@ validation later. ULTRON and VoidMain are read-only references. No credentials i
 - [x] Retain report evidence across Replay/restart and generate five-minute summaries.
 - [x] Run unit/integration/browser checks and review security/code.
 - [x] Check ignored files, secrets, links and Git diff.
-- [ ] Commit and push to https://github.com/ADITYA02NM/ReWatch-IOT-.git.
+- [x] Commit and push to https://github.com/ADITYA02NM/ReWatch-IOT-.git.
 
 ## Acceptance checks
 
@@ -95,3 +95,13 @@ configured SMTP passwords, if present, were also compared without printing them.
   already discarded by an older in-memory run cannot be reconstructed.
 - Secrets, local databases, virtual environments and firmware builds must remain
   ignored. Publication is tracked in Git history and the remote branch.
+
+### Publication
+
+The implementation commit `4cba845` and history-preserving merge `f688f53` were
+pushed to `origin/main` without force. Remote SHA equality was verified after
+that push; both previously independent root histories are retained. The local
+dashboard is running at `http://localhost:8080` with its ignored recording
+configuration, alongside the optional USB C3 bridge. No SMTP sends were enabled.
+The dashboard-specific requirements entry now delegates to the canonical root
+requirements, avoiding a stale, invalid alternate WebAuthn pin.
