@@ -38,12 +38,13 @@ not a claim that GitHub-hosted CI or a complete three-Pi deployment was tested.
 
 | Check | Command / evidence | Result |
 | --- | --- | --- |
-| Unit/API/regressions | `.venv/bin/python -m pytest -o addopts='' -q --disable-warnings` | `259 passed, 141 warnings, 139 subtests passed in 0.83s` |
+| Unit/API/regressions | `.venv/bin/python -m pytest -o addopts='' -q --disable-warnings` | `259 passed, 141 warnings, 139 subtests passed in 1.21s` |
 | Python lint | `.venv/bin/ruff check . --select F` | `All checks passed!` |
 | Shell syntax | `bash -n start.sh tools/node-install.sh demo/run.sh` | Exit 0 |
-| JavaScript syntax | `node --check` for every production/demo asset JS file | Exit 0 |
-| Chromium integration | `.venv/bin/python tests/browser_demo.py` | `PASS browser integration (51.6s); own server stopped` |
+| JavaScript syntax | `node --check` for every production/demo asset JS file | Exit 0, 9 files |
+| Chromium integration | `.venv/bin/python tests/browser_demo.py` | `PASS browser integration (52.2s); own server stopped` |
 | C3 parser/framing | `python3 firmware/tests/check_indicator.py` | `C3 parser/framing regression checks passed` |
+| Clean-cache parser dependency | Isolated tracked-source copy, Python 3.11.15, PlatformIO 6.1.18, empty project `.pio/libdeps` and separate empty `PLATFORMIO_CORE_DIR`; commands below | ArduinoJson 7.4.3 installed; parser passed; `platformio.ini` unchanged |
 | C3 compilation | `pio run -d firmware/esp32-c3-indicator -e esp32-c3-devkitm-1 -e esp32-c3-uart` | `2 succeeded` |
 | WROOM credential-free compilation | `pio run -d firmware/esp32-wroom-rig -e compile-check` | `1 succeeded` |
 | Documentation | Local Markdown destinations and XML parsing | 35 links, zero missing; 10 SVGs parsed |
@@ -79,7 +80,7 @@ two partial-parsing warnings; `bash -n` and installer regressions passed. No rul
 suppression was added, and this is **not** a clean or exhaustive security scan.
 Mutable GitHub Action references were replaced by upstream-verified commit SHAs.
 Final SAST output: **83 files scanned, six findings, two partial-parse warnings**.
-The workflow YAML was separately parsed; read-only permissions, seven steps and
+The workflow YAML was separately parsed; read-only permissions, eight steps and
 immutable Action references were checked. All 75 staged paths were inspected by
 artifact/credential-pattern checks: zero forbidden artifacts or matches; locally
 configured SMTP passwords, if present, were also compared without printing them.
@@ -108,3 +109,29 @@ requirements, avoiding a stale, invalid alternate WebAuthn pin.
 The initial GitHub run exposed two installer tests that assumed the agent's
 pre-created `/tmp/opencode` directory. Their temporary-directory fixtures now
 use the standard portable temporary location; no installer behavior was weakened.
+
+The subsequent [CI run 39487021837](https://github.com/ADITYA02NM/ReWatch-IOT-/actions/runs/39487021837)
+at `f59d16c` passed unit/API tests but failed the host firmware parser compilation:
+`ArduinoJson.h` was absent on the clean runner. Local cached PlatformIO libraries
+had masked the missing setup. CI now installs only the parser's library before
+the unchanged lint/syntax/parser checks:
+
+```sh
+python -m pip install platformio==6.1.18
+python -m platformio pkg install \
+  --project-dir firmware/esp32-c3-indicator \
+  --environment esp32-c3-devkitm-1 \
+  --library "bblanchon/ArduinoJson@7.4.3" \
+  --no-save
+python firmware/tests/check_indicator.py
+```
+
+These commands were checked against current PlatformIO documentation and executed
+in a new virtual environment and tracked-source copy with no existing project or
+PlatformIO Core dependency cache. Before installation the same parser check
+failed with the missing-header error; afterward it printed
+`C3 parser/framing regression checks passed`. No full embedded toolchain download
+is needed for this host check, and no firmware configuration or assertions changed.
+The local checks in the table were rerun for this workflow fix; firmware builds
+used existing local build caches. Hosted success must be verified for the exact
+pushed commit, not inferred from these local results.

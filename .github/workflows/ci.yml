@@ -17,6 +17,14 @@ jobs:
         run: python -m pip install -r requirements.txt -r requirements-dev.txt
       - name: Unit and API tests
         run: python -m pytest -o addopts='' -q
+      - name: Install firmware parser dependency
+        run: |
+          python -m pip install platformio==6.1.18
+          python -m platformio pkg install \
+            --project-dir firmware/esp32-c3-indicator \
+            --environment esp32-c3-devkitm-1 \
+            --library "bblanchon/ArduinoJson@7.4.3" \
+            --no-save
       - name: Lint and syntax
         run: |
           ruff check . --select F
