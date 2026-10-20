@@ -6,14 +6,6 @@
   const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const BANDS = { GREEN: "#34d27b", BLUE: "#4c8dff", YELLOW: "#f2c230", RED: "#ff4a3d", PURPLE: "#b45cff" };
-  const NODE_META = {
-    core: ["Pi 4 · Core", "threat engine · port 3"],
-    sentinel: ["Pi 3 · Sentinel", "detect + usb log · port 2"],
-    herald: ["Pi 3 · Herald", "smtp alerts · port 4"],
-    indicator: ["ESP32-C3", "oled + neopixel"],
-    rig: ["ESP32-WROOM", "room rig"],
-    verifier: ["Pi 4 · Verify", "wi-fi cross-check"],
-  };
 
   // ── state ───────────────────────────────────────────────────────────────
   const S = {
@@ -21,10 +13,10 @@
     devices: {}, telemetry: {}, verify: {}, nodes: {}, history: [], events: [], mqtt: false, simulation: false,
     filter: "all", conn: "connecting", rate: 0, msgCount: 0, serverSkew: 0,
   };
-  let ws = null, roomSpark = {};
+  let ws = null, eventPage = 0;
 
   function briefingState(on) {
-    const button = $("#c-blackhat");
+    const button = $("#btn-blackhat");
     if (button) { button.setAttribute("aria-pressed", String(!!on)); button.textContent = "Black Hat feed: " + (on ? "ON" : "OFF"); }
   }
 
@@ -43,8 +35,8 @@
       else if (m.t === "bus") onBus(m.topic, m.d);
       else if (m.t === "event") pushEvent(m.e);
       else if (m.t === "mqtt") { S.mqtt = m.ok; }
-      else if (m.t === "pong") S.serverSkew = (m.s * 1000) - Date.now();
       else if (m.t === "demo") briefingState(m.briefing);
+      else if (m.t === "pong") S.serverSkew = (m.s * 1000) - Date.now();
     };
   }
   function pingLoop() {
@@ -62,25 +54,21 @@
   }
 
   function hydrate(m) {
-    S.devices = {}; S.incident = null; roomSpark = {};
-    briefingState(m.briefing);
-    S.serverSkew = (m.server_ts * 1000) - Date.now();
     S.nodes = m.nodes || {}; S.telemetry = m.telemetry || {}; S.verify = m.verify || {};
     S.history = (m.history || []).slice(-600); S.events = (m.events || []).slice(-200);
     S.mqtt = m.mqtt; S.simulation = m.simulation === true;
     if ($("#mail-status")) $("#mail-status").textContent = (m.mail_status || "Preview only") + " · System summaries every 5 minutes.";
     if (m.version) $("#f-ver").textContent = "ReWatch IoT · SIMULATION · " + m.version;
     if (m.state) applyState(m.state);
-    else applyState({ band: "GREEN", score: 0, reason: "Simulated discovery: devices appear 20 seconds after start/replay. Refresh reconnects." });
-    renderEvents(); renderFleet(); renderRooms(); renderTopo();
+    renderEvents(); renderIncident(); renderAll();
   }
 
   function onBus(topic, d) {
     const p = topic.split("/");
     if (topic === "rewatch/threat/state") applyState(d);
-    else if (p[1] === "health" && p[2]) { S.nodes[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderFleet(); renderTopo(); }
-    else if (p[1] === "iot" && p[3] === "telemetry") { S.telemetry[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderRooms(); }
-    else if (p[1] === "verify" && p[2]) { S.verify[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderRooms(); }
+    else if (p[1] === "health" && p[2]) { S.nodes[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderAll(); }
+    else if (p[1] === "iot" && p[3] === "telemetry") { S.telemetry[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderAll(); }
+    else if (p[1] === "verify" && p[2]) { S.verify[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderAll(); }
   }
 
   function applyState(st) {
@@ -92,7 +80,16 @@
     if (st.ts) { const tail = S.history[S.history.length - 1]; if (!tail || st.ts - tail[0] > 0.8) S.history.push([st.ts, S.score, S.band]); if (S.history.length > 600) S.history.shift(); }
     if (S.band !== prevBand) onBandChange(S.band);
     document.documentElement.setAttribute("data-band", S.band);
-    renderRisk(); renderIncident(); renderRooms(); renderTopo(); renderFleet();
+    renderAll();
+  }
+
+  function renderAll() {
+    renderRisk(); renderIncident(); renderEvents();
+    const demo = $("#btn-demo");
+    if (demo) demo.textContent = rigBusy() ? "■ Simulate · AC stop" : "▶ Simulate · AC start/stop";
+    window.ReWatchRisk?.update(S);
+    window.ReWatchTopology?.update(S);
+    window.ReWatchDevices?.update(S);
   }
 
   function onBandChange(b) {
@@ -101,64 +98,84 @@
     if (b === "RED" || b === "PURPLE") toast(names[b]);
   }
 
-  // ── risk panel ──────────────────────────────────────────────────────────
+  // ── 01 risk ─────────────────────────────────────────────────────────────
   function renderRisk() {
-    $("#score").innerHTML = Math.round(S.score) + '<small>/100</small>';
-    $("#bandword").textContent = S.band;
-    $("#reason").textContent = S.reason || "All quiet — nothing above noise.";
-    const bp = $("#bandpill"); bp.lastElementChild.textContent = S.band;
-    $("#risk-sub").textContent = S.band === "BLUE" ? "a node is offline" : "score 0–100";
-    const needle = $("#needle"); if (needle) needle.style.left = clamp(S.score, 0, 100) + "%";
-    renderContrib(); drawGraph();
+    const bp = $("#bandpill"); if (bp) bp.lastElementChild.textContent = S.band;
+    const sub = $("#risk-sub"); if (sub) sub.textContent = S.band === "BLUE" ? "a node is offline" : "score 0–100";
+    const reason = $("#reason"); if (reason) reason.textContent = S.reason || "All quiet — nothing above noise.";
+    renderContrib();
   }
 
   function renderContrib() {
-    const box = $("#contrib"); box.innerHTML = "";
-    const c = S.contrib.filter((x) => (x.points || 0) > 0.5).slice(0, 5);
-    if (!c.length) { const q = el("div", "quiet", "No active inputs — the score is at rest."); box.appendChild(q); return; }
+    const box = $("#contrib"); if (!box) return;
+    box.innerHTML = "";
+    const inputs = S.contrib.filter((x) => (x.points || 0) > 0.5);
+    const c = inputs.slice(0, 3);
+    const meta = $("#eng-meta"); if (meta) meta.textContent = inputs.length > 3 ? "top 3 / " + inputs.length + " inputs" : "½-life 60 s";
+    if (!c.length) { box.append(el("div", "quiet", "No active inputs — the score is at rest.")); return; }
     const max = Math.max(...c.map((x) => x.points), 1);
     for (const x of c) {
-      box.appendChild(el("span", "k", (x.src || "").toUpperCase()));
+      box.append(el("span", "k", (x.src || "").toUpperCase()));
       const bar = el("div", "bar"); const i = el("i"); i.style.width = clamp(x.points / max * 100, 4, 100) + "%"; bar.appendChild(i); box.appendChild(bar);
-      box.appendChild(el("span", "v", Math.round(x.points)));
-      if (x.title) box.appendChild(el("span", "t", x.title));
+      box.append(el("span", "v", Math.round(x.points)));
     }
   }
 
-  function drawGraph() {
-    const cv = $("#graph"); if (!cv) return;
-    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
-    if (cv.width !== w * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
-    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    // band threshold guides
-    for (const [val, col] of [[S.thresholds.yellow, BANDS.YELLOW], [S.thresholds.red, BANDS.RED]]) {
-      const y = h - (val / 100) * h; g.strokeStyle = col + "33"; g.setLineDash([3, 4]); g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
-    }
-    g.setLineDash([]);
-    const hist = S.history; if (hist.length < 2) return;
-    const t0 = hist[0][0], t1 = hist[hist.length - 1][0], span = Math.max(t1 - t0, 1);
-    const X = (t) => (t - t0) / span * w, Y = (v) => h - (clamp(v, 0, 100) / 100) * h;
-    // filled area
-    g.beginPath(); g.moveTo(X(hist[0][0]), h);
-    for (const p of hist) g.lineTo(X(p[0]), Y(p[1]));
-    g.lineTo(X(t1), h); g.closePath();
-    const grd = g.createLinearGradient(0, 0, 0, h); const ac = BANDS[S.band] || BANDS.GREEN;
-    grd.addColorStop(0, ac + "55"); grd.addColorStop(1, ac + "05"); g.fillStyle = grd; g.fill();
-    // coloured line per band segment
-    g.lineWidth = 1.8; g.lineJoin = "round";
-    for (let i = 1; i < hist.length; i++) {
-      g.strokeStyle = BANDS[hist[i][2]] || BANDS.GREEN; g.beginPath();
-      g.moveTo(X(hist[i - 1][0]), Y(hist[i - 1][1])); g.lineTo(X(hist[i][0]), Y(hist[i][1])); g.stroke();
-    }
-    // head dot
-    const last = hist[hist.length - 1]; g.fillStyle = BANDS[last[2]] || BANDS.GREEN;
-    g.beginPath(); g.arc(X(last[0]), Y(last[1]), 3, 0, 7); g.fill();
-    $("#gleg").textContent = Math.round(span / 60) + " min · " + hist.length + " samples";
+  // ── 02 alerts ───────────────────────────────────────────────────────────
+  function pushEvent(e) {
+    S.events.push(e); if (S.events.length > 250) S.events.shift(); renderEvents();
+    if (e.kind === "mail" && $("#mail-status")) $("#mail-status").textContent = e.title + " · Summaries every 5 minutes.";
   }
 
-  // ── incident panel + OLED twin ──────────────────────────────────────────
+  function renderEvents() {
+    const ul = $("#feed"); if (!ul) return;
+    const f = S.filter;
+    const match = (e) => f === "all" ? true
+      : f === "detect" ? ["portscan", "arpsweep", "pingsweep", "flood", "newdevice", "anomaly", "integrity", "device-offline", "firmware-change", "slow-scan"].includes(e.kind)
+      : f === "incident" ? ["alert", "incident", "action", "command"].includes(e.kind)
+      : f === "mail" ? e.kind === "mail"
+      : f === "system" ? ["node", "rig", "summary"].includes(e.kind) : true;
+    const matches = S.events.filter(match).reverse();
+    const pages = Math.max(1, Math.ceil(matches.length / 3));
+    eventPage = Math.min(eventPage, pages - 1);
+    const list = matches.slice(eventPage * 3, eventPage * 3 + 3);
+    const count = $("#ev-count"); if (count) count.textContent = matches.length + " events";
+    const label = $("#events-page"); if (label) label.textContent = (matches.length ? eventPage + 1 : 0) + " / " + (matches.length ? pages : 0);
+    const prev = $("#events-prev"), next = $("#events-next");
+    if (prev) prev.disabled = eventPage === 0;
+    if (next) next.disabled = eventPage + 1 >= pages;
+    ul.innerHTML = "";
+    for (const e of list) {
+      const li = el("li", "s-" + (e.sev || "info") + " k-" + e.kind);
+      li.innerHTML = `<span class="d"></span><span class="tm">${hms(e.ts)}</span><span class="tx">${esc(e.title)}<small>${esc(e.node || e.kind)}${e.src ? " · " + esc(e.src) : ""}</small></span>`;
+      li.append(ackButton(e));
+      ul.appendChild(li);
+    }
+    if (!list.length) ul.innerHTML = `<li style="grid-template-columns:1fr"><span class="tx dim" style="font-style:italic">Nothing here yet.</span></li>`;
+  }
+
+  /* Every incident-backed alert can be acknowledged from the feed. */
+  function ackButton(e) {
+    const wrap = el("span", "ack-wrap");
+    if (!e.incident) { wrap.append(el("span", "ack-none", "—")); return wrap; }
+    const live = S.incident && S.incident.state === "open" && S.incident.id === e.incident;
+    const acked = S.incident && S.incident.id === e.incident && S.incident.state !== "open";
+    const button = el("button", "btn ack-btn", acked ? "ACKED" : "ACK");
+    button.type = "button";
+    button.disabled = !live;
+    button.title = live ? "Acknowledge this incident (cancels automatic response)"
+      : acked ? "Incident already handled" : "This incident is no longer open";
+    button.addEventListener("click", () => {
+      send({ op: "ack", id: e.incident });
+      toast("Acknowledged — automatic response cancelled");
+    });
+    wrap.append(button);
+    return wrap;
+  }
+
   function renderIncident() {
-    const box = $("#inc"), inc = S.incident; $("#inc-id").textContent = inc ? inc.id : "";
+    const box = $("#inc"); if (!box) return;
+    const inc = S.incident; const incId = $("#inc-id"); if (incId) incId.textContent = inc ? inc.id : "";
     if (!inc || inc.state === "resolved") { box.innerHTML = calmHtml(); return; }
     const total = (inc.deadline - inc.opened) || 20;
     const frac = inc.state === "open" ? clamp((inc.remaining || 0) / total, 0, 1) : (inc.state === "acked" ? 1 : 0);
@@ -167,7 +184,7 @@
       ["Acknowledge", inc.state === "acked", inc.state === "open"],
       ["Auto-respond", inc.state === "auto", false],
     ];
-    const act = inc.action ? `<p class="mono" style="margin:8px 0 0;color:var(--muted)">↳ ${esc(inc.action.summary)}</p>` : "";
+    const act = inc.action ? `<p class="mono">↳ ${esc(inc.action.summary)}</p>` : "";
     box.innerHTML = `
       <div class="inc-body">
         <div class="ring">${ringSvg(frac, inc.state)}<div class="rv"><b id="cd">${inc.state === "open" ? Math.ceil(inc.remaining || 0) : "•"}</b><span>${inc.state === "open" ? "sec left" : inc.state}</span></div></div>
@@ -186,13 +203,14 @@
   }
 
   function calmHtml() {
-    return `<div class="calm"><svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/></svg><div><h3>All clear</h3><p>No open incident. In this simulation, RED opens an incident with a 20-second countdown. Production defaults to 120 seconds.</p></div></div>`;
+    return `<div class="calm"><svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/></svg><div><h3>All clear</h3><p>No open incident. The engine scores every input live; In this simulation, RED opens an incident with a 20-second countdown. Production defaults to 120 seconds.</p></div></div>`;
   }
   function ringSvg(frac, state) {
     const r = 66, c = 2 * Math.PI * r, col = state === "acked" ? BANDS.GREEN : (state === "auto" ? BANDS.PURPLE : BANDS.RED);
     return `<svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="${r}" stroke="rgba(255,255,255,.08)" stroke-width="8" fill="none"/><circle cx="75" cy="75" r="${r}" stroke="${col}" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - frac)}" style="transition:stroke-dashoffset .5s,stroke .4s"/></svg>`;
   }
 
+  // ── OLED twin + LED ─────────────────────────────────────────────────────
   function drawOled() {
     const cv = $("#oled"); if (!cv) return; const g = cv.getContext("2d");
     g.fillStyle = "#04120a"; g.fillRect(0, 0, 128, 64);
@@ -201,7 +219,6 @@
     if (!fresh) { oledText(g, "ReWatch", 2, 2); oledText(g, "link lost", 34, 30); drawZ(g); return; }
     g.font = "bold 8px monospace"; oledText(g, "ReWatch", 0, 1);
     g.fillRect(0, 10, 128, 1);
-    // fleet 2x2
     const order = ["core", "sentinel", "herald", "rig"], lab = ["P4", "3A", "3B", "RG"];
     for (let i = 0; i < 4; i++) {
       const x = (i % 2) * 24, y = 13 + ((i / 2) | 0) * 15, up = isUp(order[i]);
@@ -209,7 +226,6 @@
       else { g.strokeStyle = "#39e08a"; g.strokeRect(x + .5, y + .5, 21, 12); g.fillStyle = "#39e08a"; }
       g.font = "8px monospace"; g.fillText(lab[i], x + 4, y + 10);
     }
-    // score
     g.fillStyle = "#39e08a"; g.font = "bold 26px monospace";
     g.fillText(String(Math.round(S.score)).padStart(3, " "), 56, 36);
     g.font = "8px monospace";
@@ -244,123 +260,150 @@
     w.textContent = words[fresh ? S.band : "BLUE"];
   }
 
-  // ── rooms ───────────────────────────────────────────────────────────────
-  function renderRooms() {
-    const box = $("#rooms"); if (!box) return;
-    const keys = Object.keys(S.telemetry).filter((k) => ["ac", "thermostat"].includes(S.telemetry[k].kind || "ac")).sort();
-    $("#rooms-sub").textContent = keys.length ? keys.length + " online" : "";
-    if (!keys.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">No IoT devices reporting yet.<br><code>rewatch/iot/&lt;device&gt;/telemetry</code></div>`; return; }
-    box.innerHTML = "";
-    for (const k of keys) {
-      const t = S.telemetry[k], v = S.verify[k] || {}, dev = S.devices[k] || {};
-      const level = dev.level || "ok", offline = (Date.now() / 1000 - (t.rx || 0)) > 15;
-      const card = el("div", "room " + (offline ? "off" : level));
-      const temp = typeof t.temp_c === "number" ? t.temp_c.toFixed(1) : "—";
-      const vch = v.ok === true ? '<span class="vchip ok">wifi ✓</span>' : v.ok === false ? '<span class="vchip bad">wifi ✗</span>' : '<span class="vchip">wifi —</span>';
-      card.innerHTML = `<div class="rn"><span>${esc(t.room || k)}</span>${vch}</div>
-        <div class="rt">${temp}<small>°C</small></div>
-        <div class="rs"><span>set ${esc(t.setpoint != null ? t.setpoint + "°" : "—")}</span><span>${esc(t.power || (offline ? "offline" : "on"))}</span></div>
-        <canvas width="200" height="36"></canvas>`;
-      box.appendChild(card);
-      sparkRoom(card.querySelector("canvas"), k, level);
+  // ── 05 controls: export, refresh, clear, OLED preview ──────────────────
+  async function exportMarkdown() {
+    let report = {};
+    try {
+      const response = await fetch("/api/report?hours=5", { credentials: "same-origin" });
+      if (response.ok) report = await response.json();
+    } catch { report = {}; }
+    const stamp = new Date().toISOString();
+    const events = report.events || S.events || [];
+    const incidents = report.incidents || [];
+    const devices = report.devices || [];
+    const lines = [];
+    lines.push("# ReWatch IoT — evidence export");
+    lines.push("");
+    lines.push(`- generated: ${stamp}`);
+    lines.push(`- source: ${location.origin}/api/report (last ${report.hours || 5} hours)`);
+    lines.push(`- mode: ${report.simulation ? "simulation (synthetic)" : "live"} · MQTT broker: ${S.mqtt ? "connected" : "not connected"}`);
+    lines.push(`- band: ${S.band} · score: ${Math.round(S.score)}/100 · open incident: ${S.incident && S.incident.state !== "resolved" ? S.incident.id : "none"}`);
+    lines.push("");
+    lines.push("## Incidents");
+    lines.push("");
+    if (!incidents.length) lines.push("_no incidents recorded in this window_");
+    else {
+      lines.push("| incident | opened | state | peak | device | title |");
+      lines.push("| --- | --- | --- | --- | --- | --- |");
+      for (const i of incidents) {
+        lines.push(`| ${i.id || ""} | ${i.opened ? new Date(i.opened * 1000).toISOString() : ""} | ${i.state || ""} | ${i.peak ?? ""} | ${i.device || ""} | ${String(i.title || "").replace(/\|/g, "/")} |`);
+      }
     }
-  }
-  function sparkRoom(cv, key, level) {
-    const hist = roomSpark[key] = (roomSpark[key] || []);
-    const t = S.telemetry[key]; if (typeof t.temp_c === "number") { hist.push(t.temp_c); if (hist.length > 60) hist.shift(); }
-    if (hist.length < 2) return;
-    const g = cv.getContext("2d"), w = cv.width, h = cv.height;
-    g.clearRect(0, 0, w, h);
-    const lo = Math.min(...hist, 16), hi = Math.max(...hist, 26), sp = Math.max(hi - lo, 1);
-    const col = level === "critical" ? BANDS.RED : level === "warn" ? BANDS.YELLOW : BANDS.GREEN;
-    g.strokeStyle = col; g.lineWidth = 1.5; g.beginPath();
-    hist.forEach((v, i) => { const x = i / (hist.length - 1) * w, y = h - (v - lo) / sp * (h - 6) - 3; i ? g.lineTo(x, y) : g.moveTo(x, y); });
-    g.stroke();
+    lines.push("");
+    lines.push("## Events");
+    lines.push("");
+    if (!events.length) lines.push("_no events recorded in this window_");
+    else {
+      lines.push("| time | kind | severity | node | device | title |");
+      lines.push("| --- | --- | --- | --- | --- | --- |");
+      for (const e of events) {
+        const time = e.ts ? new Date(e.ts * 1000).toISOString() : "";
+        lines.push(`| ${time} | ${e.kind || ""} | ${e.sev || ""} | ${e.node || ""} | ${e.device || ""} | ${String(e.title || "").replace(/\|/g, "/")} |`);
+      }
+    }
+    lines.push("");
+    lines.push("## Devices");
+    lines.push("");
+    if (!devices.length) lines.push("_no device inventory in this window_");
+    else {
+      lines.push("| device | kind | room | ip | firmware |");
+      lines.push("| --- | --- | --- | --- | --- |");
+      for (const d of devices) {
+        lines.push(`| ${d.device || ""} | ${d.kind || ""} | ${d.room || ""} | ${d.ip || ""} | ${d.firmware || ""} |`);
+      }
+    }
+    lines.push("");
+    lines.push("## Caveats");
+    lines.push("");
+    lines.push("- SMTP acceptance is not delivery confirmation; the transport only reports the server accepted the message.");
+    lines.push("- Only traffic the Sentinel can observe is analysed; on a plain switch that needs SPAN/TAP or a mirrored port.");
+    lines.push("- Reported firmware strings and IPs are device-reported, not attested.");
+    if (report.simulation) lines.push("- This export was produced by the simulation: the devices and events are synthetic.");
+    lines.push("");
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `rewatch-evidence-${stamp.replace(/[:.]/g, "-")}.md`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast("Evidence exported as Markdown");
   }
 
-  // ── topology ────────────────────────────────────────────────────────────
-  function renderTopo() {
-    window.ReWatchDevices?.update(S);
+  async function refreshLinks() {
+    const note = $("#ctl-note");
+    if (note) note.textContent = "re-checking every connection…";
+    try {
+      await fetch("/api/devices", { credentials: "same-origin", cache: "no-store" });
+      await fetch("/api/state", { credentials: "same-origin", cache: "no-store" });
+      send({ op: "ping", c: Date.now() });
+    } catch { /* offline: the panels keep their last known state */ }
+    renderAll();
+    if (note) note.textContent = `links re-checked · ${Object.keys(S.telemetry).length} devices reporting · MQTT ${S.mqtt ? "connected" : "offline"}`;
+    toast("Connections re-checked");
   }
 
-  // ── events feed ─────────────────────────────────────────────────────────
-  function pushEvent(e) { S.events.push(e); if (S.events.length > 250) S.events.shift(); renderEvents(); if (e.kind === "mail" && $("#mail-status")) $("#mail-status").textContent = e.title + " · Summaries every 5 minutes."; }
-  function renderEvents() {
-    const ul = $("#feed"); if (!ul) return;
-    const f = S.filter;
-    const match = (e) => f === "all" ? true
-      : f === "detect" ? ["portscan", "arpsweep", "pingsweep", "flood", "newdevice", "anomaly", "integrity", "device-offline", "firmware-change", "slow-scan"].includes(e.kind)
-      : f === "incident" ? ["alert", "incident", "action", "command"].includes(e.kind)
-      : f === "mail" ? e.kind === "mail"
-      : f === "system" ? ["node", "rig", "summary"].includes(e.kind) : true;
-    const list = S.events.filter(match).slice(-120).reverse();
-    $("#ev-count").textContent = S.events.length + " total";
-    ul.innerHTML = "";
-    for (const e of list) {
-      const li = el("li", "s-" + (e.sev || "info") + " k-" + e.kind);
-      li.innerHTML = `<span class="d"></span><span class="tm">${hms(e.ts)}</span><span class="tx">${esc(e.title)}<small>${esc(e.node || e.kind)}${e.src ? " · " + esc(e.src) : ""}</small></span>`;
-      ul.appendChild(li);
-    }
-    if (!list.length) ul.innerHTML = `<li style="grid-template-columns:1fr"><span class="tx dim" style="font-style:italic">Nothing here yet.</span></li>`;
-  }
-
-  // ── fleet ───────────────────────────────────────────────────────────────
-  function renderFleet() {
-    const box = $("#fleet"); if (!box) return;
-    const ids = ["core", "sentinel", "herald", "verifier", "indicator", "rig"];
-    let up = 0;
-    box.innerHTML = "";
-    for (const id of ids) {
-      const h = S.nodes[id], on = isUp(id); if (on) up++;
-      const [name, role] = NODE_META[id];
-      const n = el("div", "node " + (on ? "on" : "off"));
-      let detail = "";
-      if (h) {
-        if (id === "sentinel") detail = `usb <span class="${h.usb ? "ok" : "bad"}">${h.usb ? "mounted" : "missing"}</span> · ${esc(h.logged_lines || 0)} logged · ${esc(h.pkts || 0)} pkt`;
-        else if (id === "herald") detail = `smtp <span class="${h.configured ? "ok" : "bad"}">${h.configured ? "ready" : "unset"}</span>${h.last_ok === false ? ' · <span class="bad">last failed</span>' : h.last_ok ? ' · <span class="ok">last ok</span>' : ""}`;
-        else if (id === "core") detail = `band ${esc(h.band || "?")} · score ${esc(h.score != null ? h.score : "?")}`;
-        else if (id === "verifier") detail = `${esc(h.polls || 0)} checks · ${esc(h.mismatches || 0)} mismatch`;
-        else if (id === "indicator") detail = `serial <span class="${h.link ? "ok" : "bad"}">${h.link ? "open" : "closed"}</span>`;
-        else detail = esc(h.role || "");
-      } else detail = "no heartbeat";
-      n.innerHTML = `<div class="nh"><i></i>${name}</div><div class="nr">${role}</div><div class="nk">${detail}</div>`;
-      box.appendChild(n);
-    }
-    $("#fleet-sub").textContent = up + "/" + ids.length + " up";
+  function clearView() {
+    S.events = [];
+    eventPage = 0;
+    renderEvents();
+    window.ReWatchDevices?.select?.(null);
+    send({ op: "rig", scenario: "reset" });
+    toast("Feed cleared and setpoints reset — stored evidence is untouched");
   }
 
   // ── footer / clock ──────────────────────────────────────────────────────
   function tick() {
     const d = new Date(Date.now() + S.serverSkew);
-    $("#clock").textContent = d.toLocaleTimeString("en-GB", { hour12: false });
-    // live countdown without waiting for the next state frame
+    const clock = $("#clock"); if (clock) clock.textContent = d.toLocaleTimeString("en-GB", { hour12: false });
     if (S.incident && S.incident.state === "open") {
       const cd = $("#cd"); if (cd) { const left = Math.max(0, (S.incident.deadline - (Date.now() + S.serverSkew) / 1000)); cd.textContent = Math.ceil(left); }
     }
-    S.rate = S.msgCount; $("#f-rate").textContent = S.rate; S.msgCount = 0;
-    $("#f-events").textContent = S.events.length;
-    $("#f-open").textContent = S.incident && S.incident.state !== "resolved" ? 1 : 0;
+    S.rate = S.msgCount; const rate = $("#f-rate"); if (rate) rate.textContent = S.rate; S.msgCount = 0;
+    const ev = $("#f-events"); if (ev) ev.textContent = S.events.length;
+    const open = $("#f-open"); if (open) open.textContent = S.incident && S.incident.state !== "resolved" ? 1 : 0;
   }
-  function raf() { drawGraph(); drawOled(); drawNeo(); requestAnimationFrame(raf); }
+  function raf() { drawOled(); drawNeo(); requestAnimationFrame(raf); }
 
   // ── misc ────────────────────────────────────────────────────────────────
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
   function hms(ts) { return new Date((ts || 0) * 1000).toLocaleTimeString("en-GB", { hour12: false }); }
   function toast(t) { const box = $("#toast"); const d = el("div", null, t); box.appendChild(d); setTimeout(() => d.remove(), 5000); }
 
-  // chips
+  // chips + pager
   $("#chips")?.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    S.filter = b.dataset.f;
+    S.filter = b.dataset.f; eventPage = 0;
     for (const x of $("#chips").children) x.classList.toggle("on", x === b);
     renderEvents();
   });
-  $("#c-mail")?.addEventListener("click", () => { send({ op: "mail-test" }); toast("Mail preview/test requested — see event feed for result"); });
-  $("#c-spike")?.addEventListener("click", () => { send({ op: "rig", scenario: "ac-spike", device: "room1-ac" }); toast("Simulated AC spike started"); });
-  $("#c-reset")?.addEventListener("click", () => { send({ op: "rig", scenario: "reset" }); toast("Simulated setpoints restored"); });
-  $("#c-replay")?.addEventListener("click", () => { send({ op: "replay" }); toast("Shared demo replay restarted: discovery at 20 s, spike at 30 s"); });
-  $("#c-blackhat")?.addEventListener("click", () => { send({ op: "briefing" }); toast("Toggled synthetic detection feed — no network attacks run"); });
-  $("#c-firmware")?.addEventListener("click", () => { send({ op: "firmware-demo" }); toast("Simulated reported firmware changed — not attestation"); });
+  $("#events-prev")?.addEventListener("click", () => { eventPage = Math.max(0, eventPage - 1); renderEvents(); });
+  $("#events-next")?.addEventListener("click", () => { eventPage++; renderEvents(); });
+  /* The rig drill button follows the rig's observed state: it spikes a calm
+     AC and restores an elevated one, so it never needs a separate reset. */
+  function rigBusy() {
+    const tel = S.telemetry["room1-ac"] || {};
+    const temp = Number(tel.temp_c);
+    return Number.isFinite(temp) && temp > 22;
+  }
+  $("#btn-demo")?.addEventListener("click", () => {
+    const busy = rigBusy();
+    send({ op: "rig", scenario: busy ? "reset" : "ac-spike", device: "room1-ac" });
+    toast(busy ? "Simulated Room 1 setpoint restored" : "Simulated AC spike started on Room 1");
+  });
+  $("#btn-mail")?.addEventListener("click", () => { send({ op: "mail-test" }); toast("Mail preview/test requested — the result lands in the alert feed"); });
+  $("#btn-replay")?.addEventListener("click", () => { send({ op: "replay" }); toast("Replay restarted: discovery 20 s, spike 30 s"); });
+  $("#btn-blackhat")?.addEventListener("click", () => { send({ op: "briefing" }); toast("Toggled the synthetic detection feed — no network attacks run"); });
+  $("#btn-firmware")?.addEventListener("click", () => { send({ op: "firmware-demo" }); toast("Simulated reported firmware changed — not attestation"); });
+  $("#btn-export")?.addEventListener("click", exportMarkdown);
+  $("#btn-refresh")?.addEventListener("click", refreshLinks);
+  $("#btn-clear")?.addEventListener("click", clearView);
+  $("#btn-oled")?.addEventListener("click", () => {
+    const box = $("#oled-preview");
+    if (!box) return;
+    const open = box.hasAttribute("hidden");
+    box.toggleAttribute("hidden", !open);
+    $("#btn-oled").setAttribute("aria-expanded", String(open));
+  });
   $("#lock-btn")?.addEventListener("click", async () => { await window.ReWatchAuth.logout(); location.reload(); });
 
   window.ReWatch = {
@@ -369,8 +412,8 @@
       connect();
       setInterval(tick, 500); tick();
       requestAnimationFrame(raf);
-      // incident + rooms repaint each second so countdowns/sparks stay live
-      setInterval(() => { renderIncident(); renderRooms(); }, 1000);
+      setInterval(renderIncident, 1000);
+      window.ReWatchRisk?.bind?.();
     },
   };
 })();

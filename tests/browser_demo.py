@@ -122,6 +122,85 @@ class Dashboard:
     def click(self, selector):
         self.page.locator(selector).click()
 
+    def fits_screen(self):
+        panels = self.page.locator('main.grid > section.panel')
+        assert panels.evaluate_all('(panels) => panels.map(p => p.getAttribute("aria-label"))') == [
+            'Risk', 'Alerts', 'BlackBox', 'IoT connections', 'Controls', 'IoT details',
+        ]
+        problems = self.page.evaluate('''() => {
+            const failures = [];
+            // 1. the page itself must never scroll
+            if (document.documentElement.scrollHeight > innerHeight + 2 ||
+                document.documentElement.scrollWidth > innerWidth + 2) {
+                failures.push('page scrolls: ' + document.documentElement.scrollWidth + 'x' + document.documentElement.scrollHeight);
+            }
+            // 2. no scrollable container may hide content behind a scrollbar
+            for (const node of document.querySelectorAll('*')) {
+                const style = getComputedStyle(node);
+                const scrolls = ['auto', 'scroll'].includes(style.overflowY) || ['auto', 'scroll'].includes(style.overflowX);
+                if (!scrolls || !node.clientHeight) continue;
+                if (node.scrollHeight > node.clientHeight + 2 || node.scrollWidth > node.clientWidth + 2) {
+                    failures.push('scrollable overflow: ' + (node.id || node.className));
+                }
+            }
+            // 3. every visible panel must contain its own content
+            for (const panel of document.querySelectorAll('main.grid > .panel')) {
+                if (panel.offsetParent === null) continue;
+                if (panel.scrollHeight > panel.clientHeight + 2 || panel.scrollWidth > panel.clientWidth + 2) {
+                    failures.push('panel overflow: ' + panel.getAttribute('aria-label') + ' ' + panel.scrollWidth + 'x' + panel.scrollHeight);
+                }
+                const rect = panel.getBoundingClientRect();
+                if (rect.left < -1 || rect.top < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1) {
+                    failures.push('panel outside viewport: ' + panel.getAttribute('aria-label'));
+                }
+            }
+            // 4. every control the operator can use must be fully on screen
+            for (const node of document.querySelectorAll('main.grid button, main.grid input, main.grid select')) {
+                if (node.offsetParent === null) continue;
+                const rect = node.getBoundingClientRect();
+                if (rect.width < 1 || rect.height < 1) continue;
+                if (rect.left < -1 || rect.top < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1) {
+                    failures.push('control outside viewport: ' + (node.id || node.className || node.textContent.trim().slice(0, 20)));
+                }
+            }
+            return failures;
+        }''')
+        assert not problems, 'Dashboard does not fit one screen: ' + repr(problems)
+
+    def select_device(self, device):
+        node = self.page.locator(f'.im-node[data-device="{device}"]')
+        assert node.count() == 1, "Device not on the connections map: " + device
+        node.click()
+
+    def map_devices(self):
+        """Every device drawn on the IoT-connections diagram."""
+        return [node.get_attribute("data-device")
+                for node in self.page.locator(".im-node").all()]
+
+    def feed_contains(self, needle, timeout=12):
+        """True when any alert page shows the needle text (feed is paginated).
+
+        The feed is filled by WebSocket frames, so the text can arrive after the
+        click that triggered it; scan every page until the deadline passes.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            while not self.page.locator('#events-prev').is_disabled():
+                self.page.locator('#events-prev').click()
+            while True:
+                if needle.lower() in self.page.locator('#feed').inner_text().lower():
+                    return True
+                nxt = self.page.locator('#events-next')
+                if nxt.is_disabled():
+                    break
+                nxt.click()
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.2)
+
+    def first_device_page(self):
+        pass
+
 
 def check(name):
     print("PASS " + name, flush=True)
@@ -134,7 +213,7 @@ def main():
     with isolated_demo() as base, sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
-            context = browser.new_context(viewport={"width": 1440, "height": 1050})
+            context = browser.new_context(viewport={"width": 1366, "height": 768})
 
             def observe(page):
                 page.on("pageerror", lambda error: errors.append(str(error)))
@@ -148,6 +227,7 @@ def main():
             options = context.request.get(base + "/api/demo-options").json()
             assert options["passkey_preview"] is False
             dashboard.login()
+            dashboard.fits_screen()
             assert dashboard.state()["simulation"] is True
             check("access-code login; passkey preview disabled")
 
@@ -158,40 +238,61 @@ def main():
 
             def discovered(state):
                 nonlocal early_discovery
-                count = page.locator(".device-tile").count()
+                count = page.locator(".im-node").count()
                 if state["demo_elapsed"] < 20:
                     early_discovery |= bool(count or state["telemetry"])
                     return False
                 return count == 10 and len(state["telemetry"]) == 10
 
             dashboard.wait_state(discovered, timeout=27)
-            expect(page.locator(".device-tile")).to_have_count(10)
+            expect(page.locator(".im-node")).to_have_count(10)
             if early_discovery:
-                failures.append("Device tiles appeared before 20-second discovery")
+                failures.append("Device nodes appeared before 20-second discovery")
                 print("FAIL " + failures[-1], flush=True)
             else:
                 check("no devices before 20 seconds")
-            check("ten devices discovered at 20 seconds")
+            reachable = dashboard.map_devices()
+            assert sorted(reachable) == sorted(dashboard.state()["telemetry"]), \
+                "Connections map must show every external device: " + repr(reachable)
+            assert len(reachable) == len(set(reachable)), "Map repeated a device: " + repr(reachable)
+            first_page = [(node.text_content() or "").strip() for node in page.locator(".im-label").all()]
+            assert first_page[:4] == ["Room 1", "Room 2", "Room 3", "Room 4"], \
+                "The four AC controllers must lead the external list: " + repr(first_page)
+            check("ten devices discovered at 20 seconds; map shows all ten; ACs are Room 1-4")
 
-            dashboard.click('[data-device="lobby-plug"]')
+            dashboard.select_device("lobby-plug")
             detail = page.get_by_role("complementary", name="Selected device")
             expect(detail.get_by_role("heading", name="Lobby plug")).to_be_visible()
-            detail.get_by_label("power value", exact=True).select_option("false")
+            # Selecting a device in the IoT section exposes its control options.
+            expect(detail.locator(".control-options")).to_be_visible()
+            expect(detail.locator(".option-row")).to_have_count(1)
+            expect(detail.locator(".option-row").first).to_contain_text("power")
+            expect(detail.locator(".device-chips .chip")).to_have_count(9)
+            controls = page.locator("#device-controls")
+            expect(controls.get_by_role("heading")).to_contain_text("Lobby plug")
+            expect(page.locator("#control-target option")).to_have_count(10)
+            # The details panel hands over to the matching control form.
+            detail.locator(".option-row .btn").click()
+            expect(page.locator('#device-controls .device-control[data-action="power"]')).to_be_visible()
+            assert page.locator("#control-target").input_value() == "lobby-plug"
+            controls.get_by_label("power value", exact=True).select_option("false")
             with page.expect_response(lambda response: response.url == base + "/api/control") as request:
-                detail.get_by_role("button", name="Request power", exact=True).click()
+                controls.get_by_role("button", name="Request power", exact=True).click()
             assert request.value.status == 202
             assert request.value.json()["simulation"] is True
             expect(detail.locator(".device-evidence")).to_contain_text("power=false")
             assert dashboard.state()["telemetry"]["lobby-plug"]["power"] is False
-            check("selected plug details visible; power Off requested and observed")
+            # The populated details panel must still fit the single-screen layout.
+            dashboard.fits_screen()
+            check("selected plug details, control options and power Off request observed")
 
             # A spike makes temperature continuity distinguishable from a reset.
-            dashboard.click("#c-spike")
+            dashboard.click("#btn-demo")
             dashboard.wait_state(lambda s: s["telemetry"]["room1-ac"]["temp_c"] > 23)
             before = dashboard.state()
             page.reload()
             expect(page.locator("#conn")).to_have_text("LIVE")
-            expect(page.locator(".device-tile")).to_have_count(10)
+            expect(page.locator(".im-node")).to_have_count(10)
             after = dashboard.state()
             assert after["demo_elapsed"] >= before["demo_elapsed"]
             assert set(after["telemetry"]) == set(before["telemetry"])
@@ -200,8 +301,8 @@ def main():
             assert after["history"][0][0] == before["history"][0][0]
             check("refresh preserves rooms, elevated temperature, controls, run timeline")
 
-            dashboard.click("#c-mail")
-            expect(page.locator("#feed")).to_contain_text("delivery disabled")
+            dashboard.click("#btn-mail")
+            assert dashboard.feed_contains("delivery disabled"), "Mail preview not visible in any alert page"
             dashboard.wait_state(lambda s: any(
                 e["kind"] == "mail" and "Test message" in e["title"]
                 and "delivery disabled" in e["title"] for e in s["events"]))
@@ -211,14 +312,14 @@ def main():
             assert not any("E-mail sent" in e["title"] for e in state["events"])
             check("test e-mail is preview-only, never reported sent")
 
-            dashboard.click("#c-blackhat")
-            expect(page.locator("#c-blackhat")).to_have_attribute("aria-pressed", "true")
+            dashboard.click("#btn-blackhat")
+            expect(page.locator("#btn-blackhat")).to_have_attribute("aria-pressed", "true")
             assert dashboard.state()["briefing"] is True
-            dashboard.click("#c-blackhat")
-            expect(page.locator("#c-blackhat")).to_have_attribute("aria-pressed", "false")
+            dashboard.click("#btn-blackhat")
+            expect(page.locator("#btn-blackhat")).to_have_attribute("aria-pressed", "false")
             assert dashboard.state()["briefing"] is False
-            dashboard.click("#c-firmware")
-            expect(page.locator("#feed")).to_contain_text("firmware", ignore_case=True)
+            dashboard.click("#btn-firmware")
+            assert dashboard.feed_contains("firmware"), "Firmware event not visible in any alert page"
             check("Black Hat feed toggles; firmware demo produces event")
 
             # ACK within the real 20-second deadline, then a fresh no-ACK run.
@@ -232,10 +333,10 @@ def main():
 
             saved = dashboard.report()
             saved_ids = {event["id"] for event in saved["events"]}
-            dashboard.click("#c-replay")
+            dashboard.click("#btn-replay")
             dashboard.wait_state(lambda s: s["demo_elapsed"] < 5 and not s["telemetry"])
             assert saved_ids <= {event["id"] for event in dashboard.report()["events"]}
-            dashboard.click("#c-spike")
+            dashboard.click("#btn-demo")
             expect(page.locator("#ack")).to_be_enabled(timeout=25000)
             new_incident = dashboard.state()["state"]["incident"]
             assert new_incident["id"] != acked_id
@@ -247,7 +348,7 @@ def main():
                 and s["telemetry"]["room1-ac"]["power"] == "on"
                 and any(e["kind"] == "command" and e.get("device") == "room1-ac"
                         and "20" in e["title"] for e in s["events"]), timeout=24)
-            expect(page.locator("#bandword")).to_have_text("PURPLE")
+            expect(page.locator("#band-big")).to_have_text("PURPLE")
             auto = dashboard.state()
             assert auto["telemetry"]["room1-ac"]["power"] == "on"
             assert auto["server_ts"] >= new_incident["deadline"]
@@ -273,9 +374,19 @@ def main():
             page.set_viewport_size({"width": 390, "height": 844})
             page.goto(base)
             expect(page.locator("#conn")).to_have_text("LIVE")
-            expect(page.locator(".device-tile")).to_have_count(10)
+            # The phone layout shows one panel at a time through the selector.
+            panel_select = page.locator("#panel-select")
+            expect(panel_select).to_be_visible()
+            panel_select.select_option("connections")
+            expect(page.locator(".im-node")).to_have_count(10)
             assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), \
                 "Mobile dashboard has horizontal overflow"
+            panel_select.select_option("blackbox")
+            expect(page.locator("#blackbox")).to_be_visible()
+            expect(page.locator("[data-board='sentinel']")).to_be_visible()
+            expect(page.locator("[data-board='rig']")).to_be_visible()
+            panel_select.select_option("alerts")
+            expect(page.locator("#feed")).to_be_visible()
             for name in ("Reports · 5h", "Manual", "Debug"):
                 link = page.get_by_role("link", name=name, exact=True)
                 expect(link).to_be_visible()
@@ -284,7 +395,7 @@ def main():
                 link.click(trial=True)
             page.screenshot(path=str(ARTIFACTS / "rewatch-mobile.png"), full_page=True)
             assert not errors, "Browser JavaScript/console errors: " + repr(errors)
-            check("390px mobile: no horizontal overflow; navigation accessible; no JS errors")
+            check("390px mobile: one panel at a time, no horizontal overflow, navigation accessible")
             context.close()
         finally:
             browser.close()

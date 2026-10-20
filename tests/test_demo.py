@@ -220,11 +220,12 @@ class DemoSimulationTests(unittest.TestCase):
                 self.assertEqual(len(mails), 1)
                 title = mails[0]["title"].lower()
                 if result.get("ok") is True:
-                    self.assertIn("sent", title)
+                    # SMTP acceptance only — never a claim of delivery.
+                    self.assertIn("accepted", title)
                     self.assertNotIn("failed", title)
                 else:
                     self.assertIn("failed", title)
-                    self.assertNotIn("sent", title)
+                    self.assertNotIn("accepted", title)
 
 
 class ProductionDefaultsTests(unittest.TestCase):

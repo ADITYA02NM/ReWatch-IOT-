@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="assets/rewatch.css">
 <link rel="stylesheet" href="assets/devices.css">
 </head>
-<body>
+<body class="dashboard">
 
 <!-- ═══════════════════════ lock screen (passkey) ═══════════════════════ -->
 <section id="lock" aria-label="Sign in">
@@ -35,7 +35,7 @@
     </form>
     <div class="lk-msg" id="lk-msg" role="status"></div>
     <div class="lk-facts">
-      <span>Local recording demo</span><span>Synthetic IoT evidence</span><span>2 × Pi 3 · Pi 4 · 2 × ESP32 design</span>
+      <span>Local recording demo</span><span>Synthetic IoT evidence</span><span>2 × Pi 3 · Pi 4 · 2 × ESP32 design</span><span>Nothing leaves this machine</span>
     </div>
   </div>
   <div class="lk-right" aria-hidden="true">
@@ -76,79 +76,92 @@
   </header>
 
   <main class="grid">
-    <!-- risk / threat engine -->
-    <section class="panel p-risk" aria-label="Threat engine">
-      <h2>Threat engine <small id="risk-sub">score 0–100</small></h2>
-      <div class="risk-head">
-        <div class="score" id="score">—<small>/100</small></div>
-        <div>
-          <div class="bandword" id="bandword">—</div>
+    <!-- 01 ─────────────────────────────────────────────────────────── -->
+    <section class="panel p-risk" data-panel="risk" aria-label="Risk">
+      <h2><span class="section-number">01</span> Risk <small id="risk-sub">score 0–100</small></h2>
+      <div class="risk-dial">
+        <div class="gauge" id="gauge" aria-label="Threat score dial"></div>
+        <div class="risk-readout">
+          <div class="big-score"><span id="score-num">0</span><span class="score-unit">/ 100</span></div>
+          <div class="big-band" id="band-big">—</div>
+          <p class="reason" id="reason">Waiting for the Pi 4 threat engine…</p>
         </div>
       </div>
-      <div class="reason" id="reason">Waiting for the Pi 4 threat engine…</div>
-      <div class="gwrap"><canvas id="graph"></canvas><span class="gleg" id="gleg">last 10 min</span></div>
+      <div class="gwrap">
+        <canvas id="graph" aria-label="Score history — hover for the score and alert at that time"></canvas>
+        <div class="graph-tip" id="graph-tip" hidden></div>
+        <span class="gleg" id="gleg">last 10 min</span>
+      </div>
       <div class="engine" aria-label="Risk engine contributions">
         <div class="eh"><span>Risk engine · live inputs</span><span id="eng-meta">½-life 60 s</span></div>
         <div class="contrib" id="contrib"></div>
-        <div class="scale" id="scale"><b style="width:30%;background:var(--green)"></b><b style="width:40%;background:var(--yellow)"></b><b style="width:30%;background:var(--red)"></b><span class="needle" id="needle" style="left:0"></span></div>
-        <div class="scale-l"><span>0 green</span><span>30 yellow</span><span>70 red</span><span>100</span></div>
       </div>
     </section>
 
-    <!-- incident + indicator twin -->
-    <section class="panel p-inc" aria-label="Incident response">
-      <h2>Incident response <span class="sp"></span><small id="inc-id"></small></h2>
+    <!-- 02 ─────────────────────────────────────────────────────────── -->
+    <section class="panel p-alerts" data-panel="alerts" aria-label="Alerts">
+      <h2><span class="section-number">02</span> Alerts <span class="sp"></span><small id="inc-id"></small></h2>
       <div id="inc"></div>
-      <div class="hw">
+      <div class="chips" id="chips" aria-label="Filter alerts">
+        <button type="button" data-f="all" class="on">All</button>
+        <button type="button" data-f="detect">Detect</button>
+        <button type="button" data-f="incident">Incident</button>
+        <button type="button" data-f="mail">E-mail</button>
+        <button type="button" data-f="system">System</button>
+      </div>
+      <ul class="feed" id="feed" aria-label="Alert page"></ul>
+      <div class="pager"><small id="ev-count"></small><span class="sp"></span><button id="events-prev" type="button" aria-label="Previous alerts">←</button><span id="events-page">0 / 0</span><button id="events-next" type="button" aria-label="Next alerts">→</button></div>
+    </section>
+
+    <!-- 03 ─────────────────────────────────────────────────────────── -->
+    <section class="panel p-blackbox" data-panel="blackbox" aria-label="BlackBox">
+      <h2><span class="section-number">03</span> BlackBox <small>inside the box</small></h2>
+      <div class="bb-wrap" id="blackbox" aria-label="Board schematic and packet flow"></div>
+      <p class="topology-note">Logical wiring · pulses are the local bus, not a sniffed packet trace.</p>
+    </section>
+
+    <!-- 04 ─────────────────────────────────────────────────────────── -->
+    <section class="panel p-connections" data-panel="connections" aria-label="IoT connections">
+      <h2><span class="section-number">04</span> IoT connections <small id="iot-sub">0 devices</small></h2>
+      <div class="im-wrap" id="iotmap" aria-label="External IoT devices and their links"></div>
+      <p class="topology-note">Select a device below to inspect it in section 06.</p>
+    </section>
+
+    <!-- 05 ─────────────────────────────────────────────────────────── -->
+    <section class="panel p-controls" data-panel="controls" aria-label="Controls">
+      <h2><span class="section-number">05</span> Controls <small>operator actions</small></h2>
+      <div class="btn-grid">
+        <button class="btn" type="button" id="btn-demo" title="Simulate an AC spike on the Room 1 rig">▶ Simulate · AC start/stop</button>
+        <button class="btn" type="button" id="btn-clear" title="Clear the on-screen feed and reset setpoints — stored evidence is untouched">✕ Clear · reset view</button>
+        <button class="btn" type="button" id="btn-export" title="Download the last 5 hours of evidence as Markdown">⭳ Export · logs .md</button>
+        <button class="btn" type="button" id="btn-refresh" title="Re-check every device link and the broker">↻ Refresh · recheck links</button>
+        <button class="btn" type="button" id="btn-oled" aria-expanded="false" aria-controls="oled-preview" title="Show what the ESP32-C3 OLED and NeoPixel display right now">▣ OLED + LED</button>
+        <button class="btn" type="button" id="btn-mail" title="Ask Herald to send a test e-mail">✉ Mail test</button>
+        <a class="btn" href="reports.html" title="Open the 5-hour evidence report">▤ Evidence · 5h</a>
+        <button class="btn" type="button" id="btn-replay" title="Restart the scripted sequence — the scene only">⟲ Replay sequence</button>
+        <button class="btn" type="button" id="btn-blackhat" aria-pressed="false" title="Toggle the synthetic detection feed">Black Hat feed: OFF</button>
+        <button class="btn" type="button" id="btn-firmware" title="Simulate a device reporting a new firmware version">⇅ Firmware drill</button>
+      </div>
+      <div class="oled-preview" id="oled-preview" hidden>
         <div class="oled" title="Live twin of the ESP32-C3 OLED panel"><canvas id="oled" width="128" height="64"></canvas></div>
         <div class="hw-meta">
           <span><b>ESP32-C3 mini</b> · OLED + NeoPixel</span>
           <span class="neo"><i id="neo"></i><span id="neo-word">—</span></span>
-          <span class="mono dim" id="hw-link">USB serial · 115200</span>
+          <span class="mono dim">USB serial · 115200</span>
+          <span class="mono dim">GREEN steady · YELLOW 2 Hz · RED 4 Hz · PURPLE 1 Hz · BLUE 0.5 Hz blink</span>
         </div>
       </div>
+      <p id="mail-status" role="status">E-mail preview only · system summaries every 5 min.</p>
+      <p id="c-note">SIMULATION · discovery 20 s → spike 30 s → ACK 20 s. Refresh reconnects; Replay restarts the scene.</p>
+      <p id="ctl-note" role="status">Buttons act on the running simulation; nothing here deletes stored evidence.</p>
     </section>
 
-    <!-- topology -->
-    <section class="panel p-topo" aria-label="IoT topology">
-      <h2>IoT topology <small id="topo-sub">logical relationships</small></h2>
+    <!-- 06 ─────────────────────────────────────────────────────────── -->
+    <section class="panel p-details" data-panel="details" aria-label="IoT details">
+      <h2><span class="section-number">06</span> IoT details <small>selected in section 04</small></h2>
       <p id="device-status" role="status">Loading device policy…</p>
-      <div class="topology-layout"><div id="inventory-map" aria-label="Selectable IoT devices"></div><aside id="device-detail" aria-label="Selected device"></aside></div>
-    </section>
-
-    <!-- rooms -->
-    <section class="panel" aria-label="IoT devices">
-      <h2>Rooms · AC controllers <span class="sp"></span><small id="rooms-sub"></small></h2>
-      <div class="rooms" id="rooms"></div>
-    </section>
-
-    <!-- events -->
-    <section class="panel" aria-label="Alerts and events">
-      <h2>Alerts &amp; events <span class="sp"></span><small id="ev-count"></small></h2>
-      <div class="chips" id="chips">
-        <button type="button" data-f="all" class="on">All</button>
-        <button type="button" data-f="detect">Detections</button>
-        <button type="button" data-f="incident">Incidents</button>
-        <button type="button" data-f="mail">E-mail</button>
-        <button type="button" data-f="system">System</button>
-      </div>
-      <ul class="feed" id="feed"></ul>
-    </section>
-
-    <!-- fleet -->
-    <section class="panel" aria-label="Fleet">
-      <h2>Fleet <span class="sp"></span><small id="fleet-sub"></small></h2>
-      <div class="fleet" id="fleet"></div>
-      <div class="ctrls" id="ctrls">
-        <button class="btn" type="button" id="c-mail">Send test e-mail</button>
-        <button class="btn" type="button" id="c-spike">Simulate: Room 1 AC spike</button>
-        <button class="btn" type="button" id="c-reset">Simulate: restore setpoints</button>
-        <button class="btn" type="button" id="c-replay">Replay recording sequence</button>
-        <button class="btn" type="button" id="c-blackhat" aria-pressed="false">Black Hat feed: OFF</button>
-        <button class="btn" type="button" id="c-firmware">Simulate firmware metadata change</button>
-        <p id="c-note">SIMULATION · Start/replay: devices at 20 s → AC spike at 30 s → RED → 20 s to acknowledge. Refresh reconnects; Replay resets the shared scene, not saved reports. Black Hat feed is synthetic.</p>
-        <p id="mail-status" role="status">E-mail previews only unless local SMTP is enabled. System summaries every 5 minutes.</p>
-      </div>
+      <aside id="device-detail" aria-label="Selected device"></aside>
+      <div id="device-controls"></div>
     </section>
   </main>
 
@@ -156,6 +169,7 @@
     <span><b id="f-events">0</b> events · 5 h</span>
     <span><b id="f-open">0</b> open incident</span>
     <span>bus <b id="f-rate">0</b> msg/s</span>
+    <label class="panel-switch">Panel <select id="panel-select" aria-label="Dashboard panel"><option value="risk">Risk</option><option value="alerts">Alerts</option><option value="blackbox">BlackBox</option><option value="connections">IoT connections</option><option value="controls">Controls</option><option value="details">IoT details</option></select></label>
     <span class="sp"></span>
     <span id="f-ver">ReWatch IoT</span>
   </footer>
@@ -165,7 +179,9 @@
 <div id="toast" aria-live="polite"></div>
 
 <script src="assets/core.js"></script>
+<script src="assets/risk.js"></script>
 <script src="assets/devices.js"></script>
+<script src="assets/topology.js"></script>
 <script src="assets/live.js"></script>
 </body>
 </html>

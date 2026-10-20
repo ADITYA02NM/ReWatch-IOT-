@@ -81,8 +81,8 @@
       const config = await (await fetch("/api/demo-options", { cache: "no-store" })).json();
       demoPreview = config.passkey_preview === true;
       if (demoPreview) {
-        $("#lk-unlock").textContent = "Passkey preview · demo unlock";
-        say("DEMO ONLY: the browser prompt is cosmetic. Dismiss it to unlock too; no identity is verified.");
+        $("#lk-unlock").textContent = "Passkey preview";
+        say("PREVIEW ONLY: the browser prompt is cosmetic. Dismiss it to unlock too; no identity is verified.");
       }
     } catch { /* Ordinary production authentication remains unchanged. */ }
     const st = await status();

@@ -302,10 +302,25 @@ non-ACK playbooks with the WROOM rig, then independently verify each response.
 
 ## Dashboard and source map
 
-Production pages are `/` (live score, incident, room cards, topology and fleet),
-`/reports.html` (recorded events), `/debug.html` (raw vitals) and `/manual.html`
-(operator guide). The demo retains all four. Fonts and assets are self-hosted;
-the plain HTML/CSS/JavaScript frontend has no npm build or CDN dependency.
+Production pages are `/` (the operator dashboard), `/reports.html` (recorded
+evidence), `/debug.html` (raw vitals) and `/manual.html` (operator guide). The
+demo retains all four. Fonts and assets are self-hosted; the plain
+HTML/CSS/JavaScript frontend has no npm build or CDN dependency.
+
+The dashboard is a single non-scrolling 3×2 grid (verified at 1366×768):
+
+| Panel | Contents |
+| --- | --- |
+| 01 Risk | Speedometer gauge (band, score, threshold ticks) plus the scored history graph; hovering the graph shows the score, band and the alert active at that moment |
+| 02 Alerts | Incident ring with ACK countdown, a per-alert **Acknowledge** control that targets that alert's incident id, and a paginated event feed |
+| 03 BlackBox | Schematic of the inside of the box — Core, Sentinel, Herald, ESP32 rig and the USB-linked C3 — with packet pulses on live events and the board lids opening on detections |
+| 04 IoT connections | Radial map of enrolled/observed devices around the box with reported IPs; selecting a node opens its details |
+| 05 Controls | Demo (AC start/stop), Clear, Export .md, Refresh, OLED+LED preview and Mail test; the demo build adds Replay, Black Hat feed and Firmware drill |
+| 06 IoT details | Selected device evidence, firmware/version facts and the capability-approved control forms |
+
+On a phone the same six panels appear one at a time through the footer switcher.
+Export writes the last five hours as a Markdown evidence file; the BlackBox and
+connections diagrams are drawn from live state, never from assumed wiring.
 
 ```text
 common/rewatch.py           topic contract, MQTT helpers and configuration

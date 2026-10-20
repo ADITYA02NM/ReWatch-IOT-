@@ -121,9 +121,11 @@ class Sim:
         ok = result.get("ok") is True
         self.nodes["herald"]["last_ok"] = ok
         self.app["mail_status"] = "SMTP accepted" if ok else "SMTP failed — check local settings"
+        subject = str(result.get("subject") or "").strip()
+        suffix = f" · {subject}" if subject else ""
         self._emit({"kind": "mail", "sev": "info" if ok else "medium", "node": "herald",
-                    "title": ("E-mail sent — SMTP server accepted the message" if ok
-                              else "E-mail failed — check local SMTP configuration and logs")})
+                    "title": ("E-mail accepted by SMTP server (delivery not confirmed)" if ok
+                              else "E-mail failed — check local SMTP configuration") + suffix})
 
     # internal bus: engine publishes here; we turn it into events + state
     def _detect(self, topic: str, payload: dict, now: float) -> None:
@@ -401,7 +403,7 @@ async def page(request):
 
 async def asset(request):
     tail = request.match_info["tail"]
-    if tail in ("devices.js", "devices.css"):
+    if tail in ("devices.js", "devices.css", "risk.js", "topology.js"):
         return web.FileResponse(ROOT / "pi4-core" / "web" / "assets" / tail)
     target = (WEB / "assets" / tail).resolve()
     if (WEB / "assets").resolve() not in target.parents or not target.is_file():
@@ -527,6 +529,8 @@ async def ws_handler(request):
             elif op == "replay":
                 sim.replay(time.time())
                 request.app["broadcast"]({"t": "hello", **sim.snapshot()})
+    except asyncio.CancelledError:
+        pass  # shutdown: leave quietly instead of logging a handler failure
     finally:
         request.app["clients"].discard(ws)
     return ws
@@ -548,11 +552,19 @@ async def sim_loop(app):
 
 
 def broadcaster(app):
+    async def _send(ws, data):
+        try:
+            await ws.send_str(data)
+        except (ConnectionError, RuntimeError):
+            app["clients"].discard(ws)
+
     def _b(frame):
         data = json.dumps(frame, default=str)
         for ws in list(app["clients"]):
-            if not ws.closed:
-                asyncio.create_task(ws.send_str(data))
+            if ws.closed:
+                app["clients"].discard(ws)
+                continue
+            asyncio.create_task(_send(ws, data))
     return _b
 
 
