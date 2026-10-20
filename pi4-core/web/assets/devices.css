@@ -11,7 +11,7 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 
 /* ── 01 risk ─────────────────────────────────────────────────────────────── */
 /* 01 risk: semicircular dial left, big score right */
-.dashboard .risk-dial{display:flex;align-items:center;gap:12px;flex:none;min-height:0}
+.dashboard .risk-dial{display:flex;align-items:center;gap:12px;flex:none;min-height:0;position:relative}
 .dashboard .gauge{width:148px;height:76px;flex:none}
 .dashboard .gauge svg{width:100%;height:100%;display:block;overflow:visible}
 .dashboard .g-base{stroke:rgba(255,255,255,.14);stroke-width:1}
@@ -31,6 +31,7 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 .dashboard .graph-tip{position:absolute;z-index:5;pointer-events:none;background:var(--panel);border:1px solid var(--line-2);border-radius:5px;padding:4px 7px;font:9px/1.35 var(--mono);color:var(--text);box-shadow:0 4px 14px rgba(0,0,0,.5);max-width:190px}
 .dashboard .graph-tip b{display:block;color:var(--accent)}
 .dashboard .graph-tip span{color:var(--muted)}
+#gauge-tip{position:absolute;z-index:6}
 .dashboard .engine{flex:none;margin-top:6px;padding:7px 9px}
 .dashboard .engine::before{inset:0}
 .dashboard .engine .eh{margin-bottom:4px;font-size:9px;letter-spacing:.06em}
@@ -87,20 +88,21 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 .dashboard .bb-detail{fill:var(--muted);font:8px var(--mono)}
 .dashboard .topology-note{font:9px var(--sans);color:var(--dim);margin:5px 0 0;flex:none}
 
-/* ── 04 iot connections ──────────────────────────────────────────────────── */
+/* ── 04 iot connections (flowchart) ──────────────────────────────────────── */
 .dashboard .im-wrap{flex:1;min-height:0;display:flex}
 .dashboard .im-wrap svg{width:100%;height:100%;display:block}
 .dashboard .im-box{fill:var(--panel-2);stroke:var(--accent);stroke-width:1.2}
 .dashboard .im-box-label{fill:var(--text);font:600 9px var(--mono);letter-spacing:.12em}
 .dashboard .im-box-sub{fill:var(--dim);font:7px var(--mono)}
+.dashboard .im-bus{stroke:var(--line-2);stroke-width:1.4}
 .dashboard .im-link{stroke:var(--line-2);stroke-width:1.2}
-.dashboard .im-link.up{stroke:var(--green);opacity:.65}
+.dashboard .im-link.up{stroke:var(--green);opacity:.7}
 .dashboard .im-link.hot{stroke:var(--red);stroke-width:2}
 .dashboard .im-link.stale{stroke-dasharray:3 3}
-.dashboard .im-node circle{fill:var(--bg-2);stroke:var(--line-2);stroke-width:1.2;cursor:pointer}
-.dashboard .im-node.up circle{stroke:var(--green)}
-.dashboard .im-node.selected circle{stroke:var(--accent);stroke-width:2}
-.dashboard .im-node:hover circle,.dashboard .im-node:focus circle{stroke:var(--accent)}
+.dashboard .im-node rect{fill:var(--bg-2);stroke:var(--line-2);stroke-width:1.2;cursor:pointer}
+.dashboard .im-node.up rect{stroke:var(--green)}
+.dashboard .im-node.selected rect{stroke:var(--accent);stroke-width:2}
+.dashboard .im-node:hover rect,.dashboard .im-node:focus rect{stroke:var(--accent)}
 .dashboard .im-icon{fill:var(--text);font:12px var(--sans);pointer-events:none}
 .dashboard .im-label{fill:var(--text);font:8px var(--mono);pointer-events:none}
 .dashboard .im-ip{fill:var(--dim);font:7px var(--mono);pointer-events:none}
@@ -127,6 +129,13 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 .device-facts dt{color:var(--dim)}
 .device-facts dd{margin:0;color:var(--muted);overflow-wrap:anywhere}
 .device-hint,#device-status{font:10px/1.4 var(--sans);color:var(--muted);margin:0 0 6px;overflow-wrap:anywhere}
+/* Kind group: Room 1–4 (etc.) with a hoverable detailed summary. */
+.device-subs{margin:0 0 8px;padding:6px 7px;border:1px solid var(--line-2);border-radius:6px;background:var(--bg-2)}
+.device-subs h4{margin:0 0 4px;font:9px var(--mono);letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+.device-sub{display:block;width:100%;text-align:left;background:transparent;border:0;border-radius:4px;padding:3px 5px;font:10px/1.35 var(--mono);color:var(--muted);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.device-sub:hover,.device-sub:focus{background:var(--panel);color:var(--text);outline:1px solid var(--line-2)}
+.device-sub.on{color:var(--text);background:var(--panel)}
+.sub-detail{margin:5px 0 0;font:9px/1.35 var(--mono);color:var(--dim);min-height:24px;overflow-wrap:anywhere}
 .control-options{margin-top:8px;padding-top:7px;border-top:1px solid var(--line-2);display:flex;flex-direction:column;gap:4px;min-height:0;overflow:hidden}
 .control-options h4{margin:0;font:9px var(--mono);letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
 .option-row{display:flex;align-items:center;gap:8px;justify-content:space-between}

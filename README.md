@@ -311,10 +311,10 @@ The dashboard is a single non-scrolling 3×2 grid (verified at 1366×768):
 
 | Panel | Contents |
 | --- | --- |
-| 01 Risk | Speedometer gauge (band, score, threshold ticks) plus the scored history graph; hovering the graph shows the score, band and the alert active at that moment |
+| 01 Risk | Semi-circular speedometer gauge (band, score, threshold ticks) with the big score at the right and a hover tooltip on the gauge, plus the scored history graph whose hover shows the score, band and the alert active at that moment |
 | 02 Alerts | Incident ring with ACK countdown, a per-alert **Acknowledge** control that targets that alert's incident id, and a paginated event feed |
 | 03 BlackBox | Schematic of the inside of the box — Core, Sentinel, Herald, ESP32 rig and the USB-linked C3 — with packet pulses on live events and the board lids opening on detections |
-| 04 IoT connections | Radial map of enrolled/observed devices around the box with reported IPs; selecting a node opens its details |
+| 04 IoT connections | Modular flowchart: the ReWatch box feeds seven device-kind nodes (AC, camera, door, plug, light, fan, sensor) with live counts; selecting a kind reveals its sub-devices |
 | 05 Controls | Demo (AC start/stop), Clear, Export .md, Refresh, OLED+LED preview and Mail test; the demo build adds Replay, Black Hat feed and Firmware drill |
 | 06 IoT details | Selected device evidence, firmware/version facts and the capability-approved control forms |
 

@@ -47,6 +47,25 @@ class DemoSimulationTests(unittest.TestCase):
     def test_demo_ack_timeout_defaults_to_twenty_seconds(self):
         self.assertEqual(self.sim.eng.ack_timeout, 20)
 
+    def test_calm_score_breathes_without_approaching_yellow(self):
+        """The graph must show gentle life (not a dead-flat 0) while calm."""
+        os.environ["DEMO_AUTO_SPIKE"] = "0"  # stay calm: no scripted AC spike
+        self.replay()
+        self.sim.tick(120.0)  # discovered
+        scores = []
+        for step in range(1, 121):
+            now = 120.0 + step
+            self.sim.tick(now)
+            if self.sim.state and now - 120.0 >= 1.0:
+                scores.append(self.sim.state.get("score", 0))
+        self.assertTrue(scores, "no calm-state score samples were produced")
+        # It breathes: not every sample is the identical flat value.
+        self.assertGreater(len(set(scores)), 1,
+                           "calm score never moved — graph would look dead")
+        # It stays calm: well under the YELLOW threshold, no incident.
+        self.assertLess(max(scores), 30, "ambient activity pushed calm score into YELLOW")
+        self.assertIsNone(self.sim.eng.incident)
+
     def test_discovery_starts_at_twenty_seconds_not_before(self):
         self.replay()
         self.assertEqual(self.sim.telemetry, {})

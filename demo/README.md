@@ -54,16 +54,20 @@ The firmware demo changes a reported version string; it does not flash a device
 or prove integrity. Door control is lock-only, with explicit confirmation.
 
 The dashboard, `/reports.html`, `/debug.html` and `/manual.html` are available.
-The dashboard is one non-scrolling 3×2 grid: **01 Risk** (speedometer gauge plus
-a history graph whose tooltip shows the score, band and alert at the hovered
-moment), **02 Alerts** (incident ring, per-alert Acknowledge, paginated feed),
-**03 BlackBox** (schematic of the box internals with packet pulses on live events
-and lids opening on detections), **04 IoT connections** (radial map of the ten
-simulated devices with reported IPs — selecting one opens its details), **05
-Controls** (Demo AC start/stop, Clear, Export .md, Refresh, OLED+LED preview,
-Mail test, Replay, Black Hat feed, Firmware drill) and **06 IoT details**
-(evidence, firmware facts and the capability-approved control forms). On a
-phone, panels appear one at a time through the footer switcher.
+The dashboard is one non-scrolling 3×2 grid: **01 Risk** (semi-circular
+speedometer gauge with hover tooltip, big score, and a history graph whose
+tooltip shows the score, band and alert at the hovered moment — while calm the
+published score breathes gently, always well inside GREEN), **02 Alerts**
+(incident ring, per-alert Acknowledge, paginated feed), **03 BlackBox**
+(schematic of the box internals with packet pulses on live events and lids
+opening on detections), **04 IoT connections** (a modular flowchart: the ReWatch
+box feeds seven device-kind nodes — AC, camera, door, plug, light, fan, sensor —
+with live counts; selecting a kind, e.g. AC, reveals its Room 1–4 sub-devices
+with hoverable details), **05 Controls** (Demo AC start/stop, Clear, Export .md,
+Refresh, OLED+LED preview, Mail test, Replay, Black Hat feed, Firmware drill)
+and **06 IoT details** (kind groups with sub-device evidence, firmware facts and
+the capability-approved control forms). On a phone, panels appear one at a time
+through the footer switcher.
 
 The five-hour report uses SQLite-retained events, score samples and incidents
 across Replay and process restart. Five hours is a reporting window, not a claim

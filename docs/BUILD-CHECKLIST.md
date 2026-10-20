@@ -171,3 +171,21 @@ handed to Gmail and accepted by the SMTP server, and the user confirmed all
 five arrived: test, RED alert, PURPLE no-response, resolved, and the 5-minute
 system summary. The feed now reports "E-mail accepted by SMTP server (delivery
 not confirmed) · <subject>" rather than claiming delivery.
+
+## Frontend revamp: flowchart + ambient score (2026-10-21)
+
+- **IoT connections** is now a modular flowchart by device *kind* (AC, camera,
+  door, plug, light, fan, sensor) hanging off the ReWatch box with live counts,
+  replacing the radial per-device map. Selecting a kind expands its sub-devices
+  (AC → Room 1–4) in **IoT details**, with a hoverable summary line per device.
+- **Risk** gained a gauge hover tooltip (score/band/reason plus latest alert) and
+  the history graph keeps its hover tooltip.
+- **Ambient activity**: while calm, the demo's *published* score breathes with a
+  gentle sine wobble (display-only; `eng.score` and incident logic untouched,
+  always far below YELLOW). Contract test:
+  `test_calm_score_breathes_without_approaching_yellow`.
+- Regenerated `demo/web` via `tools/build_demo_web.py`; browser selectors moved
+  from `.im-node` to `.im-kind` (7 kinds).
+- Verification: `260 passed, 141 warnings, 139 subtests`; `ruff --select F`
+  clean; `node --check` clean on all JS. Browser suite re-run is pending on the
+  operator's machine.

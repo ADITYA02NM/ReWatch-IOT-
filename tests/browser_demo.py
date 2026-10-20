@@ -168,14 +168,19 @@ class Dashboard:
         assert not problems, 'Dashboard does not fit one screen: ' + repr(problems)
 
     def select_device(self, device):
-        node = self.page.locator(f'.im-node[data-device="{device}"]')
-        assert node.count() == 1, "Device not on the connections map: " + device
+        """Select through the kind flowchart, then the sub-device row if any."""
+        kind = self.state().get("telemetry", {}).get(device, {}).get("kind") or "generic"
+        node = self.page.locator(f'.im-kind[data-kind="{kind}"]')
+        assert node.count() == 1, "Kind not on the connections map: " + kind
         node.click()
+        sub = self.page.locator(f'.device-sub[data-device="{device}"]')
+        if sub.count():
+            sub.click()
 
-    def map_devices(self):
-        """Every device drawn on the IoT-connections diagram."""
-        return [node.get_attribute("data-device")
-                for node in self.page.locator(".im-node").all()]
+    def map_kinds(self):
+        """Every device-kind node drawn on the IoT-connections flowchart."""
+        return [node.get_attribute("data-kind")
+                for node in self.page.locator(".im-kind").all()]
 
     def feed_contains(self, needle, timeout=12):
         """True when any alert page shows the needle text (feed is paginated).
@@ -238,27 +243,37 @@ def main():
 
             def discovered(state):
                 nonlocal early_discovery
-                count = page.locator(".im-node").count()
+                count = page.locator(".im-kind").count()
                 if state["demo_elapsed"] < 20:
                     early_discovery |= bool(count or state["telemetry"])
                     return False
-                return count == 10 and len(state["telemetry"]) == 10
+                return count == 7 and len(state["telemetry"]) == 10
 
             dashboard.wait_state(discovered, timeout=27)
-            expect(page.locator(".im-node")).to_have_count(10)
+            expect(page.locator(".im-kind")).to_have_count(7)
             if early_discovery:
-                failures.append("Device nodes appeared before 20-second discovery")
+                failures.append("Device kinds appeared before 20-second discovery")
                 print("FAIL " + failures[-1], flush=True)
             else:
                 check("no devices before 20 seconds")
-            reachable = dashboard.map_devices()
-            assert sorted(reachable) == sorted(dashboard.state()["telemetry"]), \
-                "Connections map must show every external device: " + repr(reachable)
-            assert len(reachable) == len(set(reachable)), "Map repeated a device: " + repr(reachable)
-            first_page = [(node.text_content() or "").strip() for node in page.locator(".im-label").all()]
-            assert first_page[:4] == ["Room 1", "Room 2", "Room 3", "Room 4"], \
-                "The four AC controllers must lead the external list: " + repr(first_page)
-            check("ten devices discovered at 20 seconds; map shows all ten; ACs are Room 1-4")
+            kinds = dashboard.map_kinds()
+            assert kinds == ["ac", "camera", "door", "plug", "light", "fan", "sensor"], \
+                "Connections flowchart must show overall device kinds in order: " + repr(kinds)
+            check("ten devices discovered at 20 seconds; flowchart shows 7 overall kinds; AC leads")
+
+            # Clicking a kind expands its sub-devices with a hoverable summary.
+            page.locator('.im-kind[data-kind="ac"]').click()
+            expect(page.locator("#device-detail h3")).to_contain_text("Room 1")
+            subs = page.locator(".device-sub")
+            assert subs.count() == 4, "AC kind must list four room sub-devices: " + str(subs.count())
+            sub_names = [(s.inner_text() or "").split(" · ")[0] for s in subs.all()]
+            assert sub_names == ["Room 1", "Room 2", "Room 3", "Room 4"], repr(sub_names)
+            page.locator('.device-sub[data-device="room3-ac"]').hover()
+            summary = page.locator(".sub-detail").inner_text()
+            assert "room3-ac" in summary and "unattested" in summary, summary
+            page.locator('.device-sub[data-device="room3-ac"]').click()
+            expect(page.locator("#device-detail h3")).to_have_text("Room 3")
+            check("AC kind expands Room 1-4 sub-devices; hover gives the detailed summary")
 
             dashboard.select_device("lobby-plug")
             detail = page.get_by_role("complementary", name="Selected device")
@@ -292,7 +307,7 @@ def main():
             before = dashboard.state()
             page.reload()
             expect(page.locator("#conn")).to_have_text("LIVE")
-            expect(page.locator(".im-node")).to_have_count(10)
+            expect(page.locator(".im-kind")).to_have_count(7)
             after = dashboard.state()
             assert after["demo_elapsed"] >= before["demo_elapsed"]
             assert set(after["telemetry"]) == set(before["telemetry"])
@@ -378,7 +393,7 @@ def main():
             panel_select = page.locator("#panel-select")
             expect(panel_select).to_be_visible()
             panel_select.select_option("connections")
-            expect(page.locator(".im-node")).to_have_count(10)
+            expect(page.locator(".im-kind")).to_have_count(7)
             assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), \
                 "Mobile dashboard has horizontal overflow"
             panel_select.select_option("blackbox")

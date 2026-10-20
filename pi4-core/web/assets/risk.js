@@ -74,9 +74,11 @@
     if (!w || !h) return;
     if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    for (const [val, col] of [[S.thresholds?.yellow ?? 30, BANDS.YELLOW], [S.thresholds?.red ?? 70, BANDS.RED]]) {
-      const y = h - (val / 100) * h; g.strokeStyle = col + "33"; g.setLineDash([3, 4]);
-      g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+    // GREEN calm baseline, then the YELLOW/RED thresholds
+    for (const [val, col] of [[0, BANDS.GREEN], [S.thresholds?.yellow ?? 30, BANDS.YELLOW],
+                              [S.thresholds?.red ?? 70, BANDS.RED]]) {
+      const y = h - (val / 100) * h - (val === 0 ? 1.5 : 0); g.strokeStyle = col + "44";
+      g.setLineDash([3, 4]); g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
     }
     g.setLineDash([]);
     const hist = S.history || [];
@@ -147,8 +149,42 @@
     cv.addEventListener("mouseleave", () => { hover = null; if (tip) tip.hidden = true; drawGraph(); });
   }
 
+  function bindGaugeTip() {
+    const dial = document.querySelector(".risk-dial");
+    const host = $("#gauge");
+    if (!dial || !host) return;
+    let el = $("#gauge-tip");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "gauge-tip"; el.className = "graph-tip"; el.hidden = true;
+      el.setAttribute("role", "status");
+      dial.append(el);
+    }
+    host.addEventListener("mousemove", (event) => {
+      if (!S) return;
+      const recent = (S.events || []).slice(-1)[0];
+      const score = Math.round(clamp(Number(S.score) || 0, 0, 100));
+      el.hidden = false;
+      el.textContent = "";
+      const head = document.createElement("b");
+      head.textContent = `score ${score} · ${S.band || "—"}`;
+      const body = document.createElement("span");
+      const stamp = recent ? new Date(recent.ts * 1000).toLocaleTimeString("en-GB", { hour12: false }) : null;
+      body.textContent = recent
+        ? `latest alert ${stamp}: ${recent.title}`
+        : "no alert yet in this run";
+      const cause = document.createElement("span");
+      cause.textContent = " · " + (S.reason || "all quiet");
+      el.append(head, body, cause);
+      const rect = dial.getBoundingClientRect();
+      el.style.left = clamp(event.clientX - rect.left - 40, 0, Math.max(rect.width - 170, 0)) + "px";
+      el.style.top = (rect.height - 8) + "px";
+    });
+    host.addEventListener("mouseleave", () => { el.hidden = true; });
+  }
+
   window.ReWatchRisk = {
     update(state) { S = state; draw(); },
-    bind() { build(); bindGraph(); },
+    bind() { build(); bindGraph(); bindGaugeTip(); },
   };
 })();

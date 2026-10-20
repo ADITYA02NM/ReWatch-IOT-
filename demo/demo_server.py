@@ -24,6 +24,7 @@ import asyncio
 import contextlib
 import json
 import ipaddress
+import math
 import os
 import random
 import secrets
@@ -321,6 +322,14 @@ class Sim:
         self.eng.tick(now)
         self.nodes["core"].update(band=self.eng.band, score=round(self.eng.score))
         self._drain_engine()
+
+        # Ambient LAN chatter: the *published* score breathes gently so the
+        # graph shows life while calm. Display-only — never feeds incidents
+        # (eng.score stays untouched) and peaks far below YELLOW (30).
+        if self.state is not None:
+            base = self.state.get("score", 0) or 0
+            wob = 2.5 + 2.0 * math.sin(now / 17.0) + 1.0 * math.sin(now / 6.3)
+            self.state["score"] = round(base + max(0.0, min(6.5, wob)), 1)
 
         if "summary" in self.app:
             report = self.app["summary"].poll(now)

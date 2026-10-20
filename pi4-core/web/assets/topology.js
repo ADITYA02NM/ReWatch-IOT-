@@ -128,47 +128,78 @@
     }
   }
 
-  // ── 04 IoT connections ───────────────────────────────────────────────────
+  // ── 04 IoT connections — modular flowchart, one node per device kind ────
+  const KIND_NAME = { ac: "AC", thermostat: "Thermostat", camera: "IP camera", door: "Door",
+    plug: "Plug", light: "Light", fan: "Fan", sensor: "Sensor", generic: "Device" };
+
+  function kindSummary(kind, members) {
+    const ips = members.map((m) => m.ip).filter((ip) => ip && ip !== "unknown");
+    return `${(KIND_NAME[kind] || kind)} · ${members.length} device${members.length === 1 ? "" : "s"}\n`
+      + members.map((m) => `· ${m.room || m.device} (${m.device})`).join("\n")
+      + `\nIP: ${ips.length ? ips.join(", ") : "unknown"}`
+      + `\nFirmware: ${[...new Set(members.map((m) => m.firmware))].join(", ")} (unattested)`;
+  }
+
   function renderMap() {
     const host = $("#iotmap"); if (!host || !S) return;
     const rows = list();
-    const cx = 210, cy = 148, radius = 104;
-    const n = rows.length;
+    const groups = new Map();
+    for (const row of rows) {
+      const kind = row.kind || "generic";
+      if (!groups.has(kind)) groups.set(kind, []);
+      groups.get(kind).push(row);
+    }
+    const kinds = [...groups.keys()].sort((a, b) => (KIND_ORDER[a] ?? 8) - (KIND_ORDER[b] ?? 8));
+    const boxX = 8, boxY = 118, boxW = 104, boxH = 58;
+    const spineX = 150, nodeX = 186, nodeW = 224, nodeH = 32, top = 12, step = 40;
+    const midY = boxY + boxH / 2;
     const parts = [];
-    parts.push(`<rect class="im-box" x="${cx - 42}" y="${cy - 20}" width="84" height="40" rx="6"/>`);
-    parts.push(`<text class="im-box-label" x="${cx}" y="${cy - 2}" text-anchor="middle">REWATCH</text>`);
-    parts.push(`<text class="im-box-sub" x="${cx}" y="${cy + 12}" text-anchor="middle">box · 3 Pi + 2 ESP32</text>`);
-    rows.forEach((row, i) => {
-      const angle = (i / Math.max(n, 1)) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + radius * Math.cos(angle), y = cy + radius * 0.78 * Math.sin(angle);
-      const up = fresh(row);
-      const hot = (S.events || []).some((e) => e.device === row.device && Date.now() / 1000 - e.ts < 45);
-      const linkClass = hot ? "hot" : up ? "up" : "stale";
-      parts.push(`<line class="im-link ${linkClass}" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`);
-      parts.push(`<g class="im-node${selected === row.device ? " selected" : ""}${up ? " up" : ""}" data-device="${row.device}" tabindex="0" role="button" aria-label="${row.room || row.device}">
-        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="15"/>
-        <text class="im-icon" x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle">${ICONS[row.kind] || ICONS.generic}</text>
-        <text class="im-label" x="${x.toFixed(1)}" y="${(y + 27).toFixed(1)}" text-anchor="middle">${short(row.room || row.device)}</text>
-        <text class="im-ip" x="${x.toFixed(1)}" y="${(y + 37).toFixed(1)}" text-anchor="middle">${short(row.ip || "")}</text>
+    parts.push(`<rect class="im-box" x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="6"/>`);
+    parts.push(`<text class="im-box-label" x="${boxX + boxW / 2}" y="${midY - 4}" text-anchor="middle">REWATCH</text>`);
+    parts.push(`<text class="im-box-sub" x="${boxX + boxW / 2}" y="${midY + 12}" text-anchor="middle">box · 3 Pi + 2 ESP32</text>`);
+    if (kinds.length) {
+      const firstCy = top + nodeH / 2, lastCy = top + (kinds.length - 1) * step + nodeH / 2;
+      parts.push(`<line class="im-bus" x1="${boxX + boxW}" y1="${midY}" x2="${spineX}" y2="${midY}"/>`);
+      parts.push(`<line class="im-bus" x1="${spineX}" y1="${firstCy}" x2="${spineX}" y2="${lastCy}"/>`);
+    }
+    kinds.forEach((kind, i) => {
+      const members = groups.get(kind);
+      const y = top + i * step, cy = y + nodeH / 2;
+      const up = members.some(fresh);
+      const hot = (S.events || []).some((e) => e.device && members.some((m) => m.device === e.device)
+        && Date.now() / 1000 - e.ts < 45);
+      const sel = members.some((m) => m.device === selected);
+      parts.push(`<line class="im-link ${hot ? "hot" : up ? "up" : "stale"}" x1="${spineX}" y1="${cy}" x2="${nodeX}" y2="${cy}"/>`);
+      parts.push(`<g class="im-node im-kind${sel ? " selected" : ""}${up ? " up" : ""}" data-kind="${kind}" tabindex="0" role="button" aria-label="${KIND_NAME[kind] || kind}, ${members.length} devices">
+        <title>${kindSummary(kind, members)}</title>
+        <rect x="${nodeX}" y="${y}" width="${nodeW}" height="${nodeH}" rx="6"/>
+        <text class="im-icon" x="${nodeX + 16}" y="${cy + 4}">${ICONS[kind] || ICONS.generic}</text>
+        <text class="im-label" x="${nodeX + 34}" y="${cy - 2}">${KIND_NAME[kind] || kind}</text>
+        <text class="im-ip" x="${nodeX + 34}" y="${cy + 10}">${members.length}× · ${short(members.map((m) => m.room || m.device).join(", "))}</text>
+        <text class="im-ip" x="${nodeX + nodeW - 10}" y="${cy + 4}" text-anchor="end">${up ? "up" : "stale"}</text>
       </g>`);
     });
-    host.innerHTML = `<svg viewBox="0 0 420 300" role="img" aria-label="External IoT device connections">${parts.join("")}</svg>`;
-    for (const node of host.querySelectorAll(".im-node")) {
-      node.addEventListener("click", () => pick(node.dataset.device));
+    host.innerHTML = `<svg viewBox="0 0 420 300" role="img" aria-label="External IoT device kinds connected to the ReWatch box">${parts.join("")}</svg>`;
+    for (const node of host.querySelectorAll(".im-kind")) {
+      node.addEventListener("click", () => pickKind(node.dataset.kind));
       node.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pick(node.dataset.device); }
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pickKind(node.dataset.kind); }
       });
     }
     const sub = $("#iot-sub");
     if (sub) {
       const up = rows.filter(fresh).length;
-      sub.textContent = rows.length ? `${rows.length} devices · ${up} reporting` : "no devices observed";
+      sub.textContent = rows.length
+        ? `${kinds.length} kinds · ${rows.length} devices · ${up} reporting`
+        : "no devices observed";
     }
   }
 
-  function pick(device) {
-    selected = device;
-    window.ReWatchDevices?.select?.(device);
+  function pickKind(kind) {
+    const lead = list().find((row) => (row.kind || "generic") === kind);
+    if (!lead) return;
+    selected = lead.device;
+    window.ReWatchDevices?.select?.(lead.device);
     renderMap();
   }
 
