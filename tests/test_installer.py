@@ -43,7 +43,7 @@ class InstallerSafetyTests(unittest.TestCase):
             self.assertNotEqual(self.run_installer(*args).returncode, 0)
 
     def test_config_argument_preserves_following_dry_run(self):
-        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:
+        with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / 'trusted.env'
             config.write_text('IP_CORE=192.0.2.10\n')
             result = self.run_installer('--config', str(config), '--dry-run')
@@ -52,7 +52,7 @@ class InstallerSafetyTests(unittest.TestCase):
             self.assertNotIn('checking SSH', result.stdout)
 
     def test_failed_remote_directory_stops_copy_and_reports_failure(self):
-        with tempfile.TemporaryDirectory(dir='/tmp/opencode') as directory:
+        with tempfile.TemporaryDirectory() as directory:
             stub = Path(directory)
             (stub / 'ssh').write_text('#!/bin/sh\ncase "$*" in *" true") exit 0;; *) exit 1;; esac\n')
             (stub / 'rsync').write_text('#!/bin/sh\necho UNSAFE_COPY_AFTER_FAILURE\nexit 1\n')

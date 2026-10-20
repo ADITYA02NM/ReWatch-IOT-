@@ -105,3 +105,6 @@ dashboard is running at `http://localhost:8080` with its ignored recording
 configuration, alongside the optional USB C3 bridge. No SMTP sends were enabled.
 The dashboard-specific requirements entry now delegates to the canonical root
 requirements, avoiding a stale, invalid alternate WebAuthn pin.
+The initial GitHub run exposed two installer tests that assumed the agent's
+pre-created `/tmp/opencode` directory. Their temporary-directory fixtures now
+use the standard portable temporary location; no installer behavior was weakened.
