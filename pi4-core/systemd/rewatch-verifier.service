@@ -1,0 +1,14 @@
+[Unit]
+Description=ReWatch Wi-Fi verifier (Pi 4 core, AC600)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+[Service]
+Type=simple
+User=rewatch
+EnvironmentFile=/etc/rewatch/rewatch.env
+ExecStart=/opt/rewatch/venv/bin/python /opt/rewatch/pi4-core/verifier.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+[Install]
+WantedBy=multi-user.target

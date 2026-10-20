@@ -1,0 +1,5 @@
+# ReWatch dashboard (Pi 4). Pinned.
+aiohttp==3.10.10
+aiomqtt==2.3.0
+webauthn==3.0.1
+paho-mqtt==2.1.0

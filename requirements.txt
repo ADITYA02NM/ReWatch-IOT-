@@ -1,0 +1,7 @@
+# ReWatch node services (shared). Install into /opt/rewatch/venv.
+paho-mqtt==2.1.0
+aiohttp==3.10.10
+aiomqtt==2.3.0
+webauthn==3.0.1
+scapy==2.6.1          # Sentinel network detection
+pyserial==3.5         # Pi 4 -> ESP32-C3 indicator link

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>ReWatch — vitals</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<style>
+/* Standalone, read-only vitals. One file, no build, no webfont, vanilla JS.
+   It only ever sends a clock-sync ping; it never publishes or commands anything. */
+:root{--bg:#0a0a0a;--fg:#c8c8c8;--dim:#7d7d7d;--dim2:#565656;--line:#2a2a2a;
+--ok:#34d27b;--blue:#4c8dff;--warn:#f2c230;--err:#ff4a3d;--purple:#b45cff;
+--mono:ui-monospace,Menlo,"DejaVu Sans Mono",Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;padding:10px;background:var(--bg);color:var(--fg);font:12px/1.5 var(--mono)}
+a{color:inherit;text-decoration:none;border:1px solid var(--line);padding:1px 7px}
+a:hover{border-color:var(--ok);color:var(--ok)}
+h1{font:inherit;font-weight:700;margin:0;letter-spacing:.06em}
+h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin:12px 0 3px}
+.hd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.sp{flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:6px}
+.r{display:grid;grid-template-columns:13ch 1fr;gap:0 10px;padding-left:1ch}
+.k{color:var(--dim)}
+.ok{color:var(--ok)}.blue{color:var(--blue)}.warn{color:var(--warn)}.err{color:var(--err)}.purple{color:var(--purple)}
+.b-GREEN{color:var(--ok)}.b-BLUE{color:var(--blue)}.b-YELLOW{color:var(--warn)}.b-RED{color:var(--err)}.b-PURPLE{color:var(--purple)}
+table{border-collapse:collapse;width:100%}
+td,th{text-align:left;padding:2px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--dim);font-weight:400;text-transform:uppercase;font-size:10px}
+#stream{max-height:42vh;overflow:auto;border:1px solid var(--line);margin-top:4px}
+.row{white-space:pre-wrap;word-break:break-word;padding:1px 6px;border-bottom:1px solid #161616}
+.row .ts{color:var(--dim2)}
+.row.ev{color:var(--fg)}.row.bad{color:var(--err)}
+.bar{display:inline-block;height:8px;background:var(--ok);vertical-align:1px}
+button{font:inherit;background:none;color:var(--fg);border:1px solid var(--line);padding:1px 8px;cursor:pointer}
+button.on{border-color:var(--ok);color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>ReWatch vitals</h1>
+  <span class="dim" id="conn">connecting…</span>
+  <span class="dim" id="rate">0 msg/s</span>
+  <span class="sp"></span>
+  <a href="/">dashboard</a><a href="reports.html">reports</a><a href="manual.html">manual</a>
+</div>
+
+<div class="grid">
+  <div>
+    <h2>risk</h2>
+    <div class="r"><span class="k">score</span><span id="v-score">—</span></div>
+    <div class="r"><span class="k">band</span><span id="v-band">—</span></div>
+    <div class="r"><span class="k">reason</span><span id="v-reason">—</span></div>
+    <div class="r"><span class="k">incident</span><span id="v-inc">none</span></div>
+  </div>
+  <div>
+    <h2>bus</h2>
+    <div class="r"><span class="k">mqtt</span><span id="v-mqtt">—</span></div>
+    <div class="r"><span class="k">ws clients</span><span id="v-wsc">—</span></div>
+    <div class="r"><span class="k">clock skew</span><span id="v-skew">—</span></div>
+    <div class="r"><span class="k">server ver</span><span id="v-ver">—</span></div>
+  </div>
+  <div>
+    <h2>nodes</h2>
+    <table id="nodes"><tbody></tbody></table>
+  </div>
+  <div>
+    <h2>devices</h2>
+    <table id="devs"><tbody></tbody></table>
+  </div>
+</div>
+
+<h2>contributions</h2>
+<table id="contrib"><tbody></tbody></table>
+
+<h2>bus stream <button id="pause">pause</button> <button id="evonly">events only</button></h2>
+<div id="stream"></div>
+
+<script src="assets/debug.js"></script>
+</body>
+</html>

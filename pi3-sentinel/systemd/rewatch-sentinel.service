@@ -1,0 +1,14 @@
+[Unit]
+Description=ReWatch Sentinel — detection + USB logging (Pi 3)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+[Service]
+Type=simple
+# root: scapy needs raw sockets to sniff the LAN
+User=root
+EnvironmentFile=/etc/rewatch/rewatch.env
+ExecStart=/opt/rewatch/venv/bin/python /opt/rewatch/pi3-sentinel/detector.py
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

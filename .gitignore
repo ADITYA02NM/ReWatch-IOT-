@@ -1,0 +1,20 @@
+# ReWatch
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.db
+*.db-wal
+*.db-shm
+# local CA / certs — never commit keys
+ca/
+certs/
+# secrets
+**/secrets.h
+*.env
+!.env.example
+# build / editor
+.pio/
+dist/
+node_modules/
+.DS_Store

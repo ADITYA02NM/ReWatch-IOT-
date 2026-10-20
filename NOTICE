@@ -1,0 +1,15 @@
+ReWatch IoT — real-hardware IoT threat detection, scoring, alerting and response
+Copyright 2026 the ReWatch IoT team
+
+ReWatch IoT grew out of the ULTRON smart-house project and keeps its
+Apache-2.0 licence. Parts of the passkey (WebAuthn) authentication module,
+the local-CA script and the ESP32-C3 indicator firmware (boot animation,
+ECG trace) are carried over from ULTRON.
+
+This product includes software developed by third parties, under their own
+licences. The inventory — dependency licences and the SIL Open Font License
+1.1 text covering the self-hosted typefaces the dashboard serves — is in
+THIRD_PARTY.md.
+
+Mosquitto and nftables are invoked as separate processes. They are not
+included in, linked against, or redistributed with this work.

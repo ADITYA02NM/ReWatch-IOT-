@@ -1,0 +1,14 @@
+[Unit]
+Description=ReWatch indicator bridge -> ESP32-C3 (Pi 4 core, USB serial)
+After=mosquitto.service
+[Service]
+Type=simple
+User=rewatch
+SupplementaryGroups=dialout
+EnvironmentFile=/etc/rewatch/rewatch.env
+ExecStart=/opt/rewatch/venv/bin/python /opt/rewatch/pi4-core/indicator.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+[Install]
+WantedBy=multi-user.target
