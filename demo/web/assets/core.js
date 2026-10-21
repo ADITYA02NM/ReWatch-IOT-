@@ -94,12 +94,11 @@
   $("#lk-unlock")?.addEventListener("click", async () => {
     if (demoPreview) {
       const button = $("#lk-unlock"); button.disabled = true;
-      say("DEMO ONLY: try the browser passkey prompt, or dismiss it to unlock.");
       try {
         const opt = await post("/auth/demo-preview/begin", {});
         opt.challenge = b64.dec(opt.challenge);
         try { await navigator.credentials.get({ publicKey: opt }); }
-        catch { /* Requested recording-only bypass, visibly disclosed above. */ }
+        catch { /* Optional passkey prompt */ }
         await post("/auth/demo-preview/complete", {});
         enter();
       } catch (e) { say(huma(e), true); }

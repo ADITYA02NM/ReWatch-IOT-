@@ -109,7 +109,8 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 /* ── 05 controls ─────────────────────────────────────────────────────────── */
 .dashboard .btn-grid{flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
 .dashboard .btn-grid .btn{display:block;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#btn-blackhat[aria-pressed="true"]{background:var(--red,#ff4a3d);color:#fff;border-color:var(--red,#ff4a3d);box-shadow:0 0 10px rgba(255,74,61,.45)}
+#btn-blackhat[aria-pressed="true"]{background:var(--red,#ff4a3d);color:#fff;border-color:var(--red,#ff4a3d);box-shadow:0 0 16px rgba(255,74,61,.75);animation:crazyblackhat .6s ease-in-out infinite alternate}
+@keyframes crazyblackhat{from{box-shadow:0 0 8px rgba(255,74,61,.4)}to{box-shadow:0 0 24px rgba(255,74,61,.95);transform:scale(1.02)}}
 .dashboard .oled-preview{flex:none;margin-top:8px;padding-top:7px;border-top:1px solid var(--line-2);display:flex;gap:10px;align-items:flex-start}
 .dashboard .oled-preview[hidden]{display:none}
 .dashboard .oled{padding:4px;flex:none}

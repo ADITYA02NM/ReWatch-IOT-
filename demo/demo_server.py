@@ -316,8 +316,21 @@ class Sim:
                                 "wifi_temp": round(r["temp"], 1), "rx": now}
             self.eng.on_message(rw.topic("verify", dev), {**self.verify[dev], "alarm": False}, now)
 
-        if self.briefing and random.random() < 0.14:
+        if self.briefing and random.random() < 0.65:
             self._random_event(now)
+
+        # Routine regular baseline activity: every ~12-16 seconds when calm,
+        # emit routine verified telemetry status to keep the feed actively bustling.
+        if not self.briefing and random.random() < 0.04 and self.discovered and self.eng.score == 0:
+            regular_logs = [
+                ("Sentinel: routine ARP subnet scan — 10 nodes responding, 0 drift", "sentinel"),
+                ("Core: dual-path verify check — Wi-Fi + MQTT in 0.1 °C parity", "core"),
+                ("ESP32-WROOM: room rig GPIO ADC calibration nominal (3.3V stable)", "rig"),
+                ("Sentinel: USB audit log checkpoint — framing checksums valid", "sentinel"),
+                ("Herald: heartbeat ping verified with upstream relay", "herald"),
+            ]
+            msg, node = random.choice(regular_logs)
+            self._emit({"kind": "rig", "sev": "info", "node": node, "title": msg})
 
         for i, (dev, fields) in enumerate(self.extras.items() if self.discovered else []):
             tel = {**fields, "device": dev, "ip": f"192.168.100.{60+i}", "rx": now}
@@ -338,7 +351,7 @@ class Sim:
                 self._emit({**ev, "node": "sentinel"})
 
         # fleet heartbeats stay fresh
-        self.pkts += random.randint(2, 9)
+        self.pkts += random.randint(8, 24)
         self.logged += 1
         for n, h in self.nodes.items():
             h["rx"] = now
@@ -355,13 +368,16 @@ class Sim:
         self.nodes["core"].update(band=self.eng.band, score=round(self.eng.score))
         self._drain_engine()
 
-        # Ambient LAN chatter: the *published* score breathes gently so the
-        # graph shows life while calm. Display-only — never feeds incidents
-        # (eng.score stays untouched) and peaks far below YELLOW (30).
+        # Ambient LAN chatter & regular background network activity:
+        # keeps the system busy between 5 and 20 while calm. Display-only —
+        # never feeds incidents (eng.score stays untouched) and stays within 5–20.
         if self.state is not None:
-            base = self.state.get("score", 0) or 0
-            wob = 2.5 + 2.0 * math.sin(now / 17.0) + 1.0 * math.sin(now / 6.3)
-            self.state["score"] = round(base + max(0.0, min(6.5, wob)), 1)
+            base = self.eng.score or 0.0
+            if base < 5.0:
+                wob = 12.0 + 5.0 * math.sin(now / 11.0) + 2.2 * math.sin(now / 4.7) + 0.8 * math.cos(now / 2.3)
+                self.state["score"] = round(max(5.0, min(19.8, wob)), 1)
+            else:
+                self.state["score"] = round(base, 1)
 
         if "summary" in self.app:
             report = self.app["summary"].poll(now)
@@ -387,15 +403,23 @@ class Sim:
         # Network scan / discovery detections.
         # All non-anomaly topics are counted by summary.ReportWindow.observe().
         network_pool = [
+            ("flood",     "critical", f"SYN flood attack — {random.randint(40,120)} kpps targeting port 1883 (MQTT)"),
+            ("flood",     "critical", f"DNS amplification flood — {random.randint(20,80)} kpps from {_ip()}"),
+            ("flood",     "critical", f"UDP flood from {_ip()} — {random.randint(50,150)} kpps"),
+            ("portscan",  "critical", f"Zero-day exploit scan targeting IoT REST endpoints from {_ip()}"),
             ("portscan",  "critical", f"Aggressive TCP port scan from {_ip()} — {random.randint(500,5000)} ports probed"),
+            ("portscan",  "high",     f"Brute-force SSH attack on Sentinel Pi — {random.randint(50,250)} attempts from {_ip()}"),
             ("portscan",  "high",     f"TCP port scan from {_ip()} — {random.randint(40,499)} ports"),
+            ("arpsweep",  "high",     f"ARP cache poisoning & gateway spoofing attempt by {_mac()}"),
             ("arpsweep",  "high",     f"ARP sweep from {_ip()} — full subnet enumeration"),
             ("arpsweep",  "medium",   f"Host-discovery ARP sweep from {_ip()}"),
+            ("pingsweep", "high",     f"Aggressive deauth flood on 2.4 GHz IoT band from {_mac()}"),
             ("pingsweep", "high",     f"ICMP sweep from {_ip()} — {random.randint(20,254)} hosts"),
             ("pingsweep", "medium",   f"Ping sweep from {_ip()}"),
+            ("newdevice", "high",     f"Rogue hardware implant detected on switch port 5 — {_mac()}"),
             ("newdevice", "medium",   f"New device on LAN — {_mac()} ({_ip()})"),
             ("newdevice", "low",      f"Unregistered MAC {_mac()} joined 192.168.100.0/24"),
-            ("flood",     "critical", f"UDP flood from {_ip()} — {random.randint(10,100)} kpps"),
+            ("slow-scan", "high",     f"Stealth evasion scan probing industrial Modbus ports from {_ip()}"),
             ("slow-scan", "medium",   f"Slow stealth scan from {_ip()} — evading rate limits"),
         ]
         # IoT-device alerts.
@@ -404,16 +428,19 @@ class Sim:
         # Tuple: (detect_kind, display_kind, sev, device, title)
         iot_pool = [
             # Camera events
+            ("integrity",     "anomaly", "critical", "entry-camera", "Camera RTSP stream hijacked — unauthorized multicast feed detected"),
             ("integrity",     "anomaly", "critical", "entry-camera", "Camera motion detected — unscheduled access corridor"),
             ("integrity",     "anomaly", "high",     "entry-camera", "Camera recording gap — 47 s of missing footage"),
             ("integrity",     "anomaly", "medium",   "entry-camera", "Camera stream jitter — possible network interference"),
             ("device-offline","anomaly", "low",      "entry-camera", "Camera rebooted — firmware watchdog triggered"),
             # Door events
+            ("integrity",     "anomaly", "critical", "entry-door",   "Replay attack against ESP32 door lock HMAC challenge"),
             ("integrity",     "anomaly", "critical", "entry-door",   "Forced-open alarm — entry door breached without auth"),
             ("integrity",     "anomaly", "high",     "entry-door",   "Door held open > 30 s — tailgating risk"),
             ("integrity",     "anomaly", "medium",   "entry-door",   "Door unlock command from unrecognised source"),
             ("device-offline","anomaly", "low",      "entry-door",   "Door sensor battery low — replacement recommended"),
             # Plug events
+            ("integrity",     "anomaly", "critical", "lobby-plug",   "Surge injection: Smart plug spiked to 3,100 W (breaker trip hazard)"),
             ("integrity",     "anomaly", "critical", "lobby-plug",   "Plug power spike — 2.4 kW surge (rated 1.5 kW)"),
             ("integrity",     "anomaly", "high",     "lobby-plug",   "Lobby plug on outside scheduled hours"),
             ("integrity",     "anomaly", "medium",   "lobby-plug",   "Plug power draw anomaly — 40 % above baseline"),
@@ -423,19 +450,22 @@ class Sim:
             ("integrity",     "anomaly", "medium",   "lobby-light",  "Light brightness command rejected — controller unresponsive"),
             ("device-offline","anomaly", "low",      "lobby-light",  "Light flicker — driver undervoltage"),
             # Fan events
+            ("integrity",     "anomaly", "critical", "lobby-fan",    "Motor lock: lobby fan driven into counter-rotation overload"),
             ("integrity",     "anomaly", "high",     "lobby-fan",    "Fan speed command override — physical interlock suspected"),
             ("integrity",     "anomaly", "medium",   "lobby-fan",    "Fan running at 100 % — thermal event possible"),
             ("device-offline","anomaly", "low",      "lobby-fan",    "Fan speed oscillating — bearing wear indicator"),
             # Sensor events
+            ("integrity",     "anomaly", "critical", "safety-sensor", "Sensor blackout: safety sensor telemetry line held in reset"),
             ("integrity",     "anomaly", "critical", "safety-sensor", "SMOKE DETECTED — safety sensor triggered"),
             ("integrity",     "anomaly", "critical", "safety-sensor", "WATER LEAK — safety sensor triggered"),
             ("device-offline","anomaly", "high",     "safety-sensor", "Sensor offline > 5 min — loss of safety coverage"),
             ("integrity",     "anomaly", "medium",   "safety-sensor", "Sensor self-test failed — calibration required"),
             # AC / room events (no device key)
-            ("integrity",     "anomaly", "high",     None, f"{_room()} AC setpoint changed remotely without operator session"),
-            ("integrity",     "anomaly", "medium",   None, f"{_room()} temperature deviation > 4 \u00b0C from setpoint"),
-            ("integrity",     "anomaly", "medium",   None, f"{_room()} AC unresponsive to last three commands"),
-            ("device-offline","anomaly", "low",      None, f"{_room()} AC filter maintenance alert"),
+            ("integrity",     "anomaly", "critical", None,           f"{_room()} AC compressor forced override: thermal runaway to 38 °C"),
+            ("integrity",     "anomaly", "high",     None,           f"{_room()} AC setpoint changed remotely without operator session"),
+            ("integrity",     "anomaly", "medium",   None,           f"{_room()} temperature deviation > 4 °C from setpoint"),
+            ("integrity",     "anomaly", "medium",   None,           f"{_room()} AC unresponsive to last three commands"),
+            ("device-offline","anomaly", "low",      None,           f"{_room()} AC filter maintenance alert"),
         ]
         # Pick exactly ONE detection event — summary counts one per _random_event call.
         if random.random() < 0.45:
@@ -450,7 +480,8 @@ class Sim:
             if device:
                 base_ev["device"] = device
                 if device == "lobby-plug":
-                    self._briefing_overrides[device] = ({"power_w": random.randint(2200, 2600)}, now + 4.0)
+                    power_val = random.randint(2700, 3150) if "3,100" in title else random.randint(2200, 2600)
+                    self._briefing_overrides[device] = ({"power_w": power_val}, now + 4.0)
                 elif device == "entry-door":
                     self._briefing_overrides[device] = ({"forced_open": True}, now + 5.0)
                 elif device == "safety-sensor":
@@ -462,7 +493,7 @@ class Sim:
                     val = 100 if "Lights on" in title else 15
                     self._briefing_overrides[device] = ({"brightness": val}, now + 4.0)
                 elif device == "entry-camera":
-                    if "gap" in title or "rebooted" in title:
+                    if "gap" in title or "rebooted" in title or "hijacked" in title:
                         self._briefing_overrides[device] = ({"recording": False}, now + 4.5)
             else:
                 for dev, label in ROOMS.items():
@@ -470,7 +501,8 @@ class Sim:
                         base_ev["device"] = dev
                         r = self.rooms.get(dev)
                         if r and not r.get("spiked"):
-                            r["temp"] = min(32.0, r["temp"] + random.uniform(2.5, 4.0))
+                            bump = random.uniform(5.0, 7.5) if "runaway" in title else random.uniform(2.5, 4.0)
+                            r["temp"] = min(37.0, r["temp"] + bump)
                         break
             detect_ev = rw.make_event(detect_kind, sev, title, device=base_ev.get("device", ""))
             self._detect(rw.topic("detect", detect_kind), detect_ev, now)
@@ -527,11 +559,14 @@ async def page(request):
 async def asset(request):
     tail = request.match_info["tail"]
     if tail in ("devices.js", "devices.css", "risk.js", "topology.js", "rewatch.css"):
-        return web.FileResponse(ROOT / "pi4-core" / "web" / "assets" / tail)
-    target = (WEB / "assets" / tail).resolve()
-    if (WEB / "assets").resolve() not in target.parents or not target.is_file():
-        raise web.HTTPNotFound()
-    return web.FileResponse(target)
+        resp = web.FileResponse(ROOT / "pi4-core" / "web" / "assets" / tail)
+    else:
+        target = (WEB / "assets" / tail).resolve()
+        if (WEB / "assets").resolve() not in target.parents or not target.is_file():
+            raise web.HTTPNotFound()
+        resp = web.FileResponse(target)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    return resp
 
 
 async def healthz(request):
