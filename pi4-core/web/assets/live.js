@@ -373,7 +373,10 @@
   function rigBusy() {
     const tel = S.telemetry["room1-ac"] || {};
     const temp = Number(tel.temp_c);
-    return Number.isFinite(temp) && temp > 22;
+    const elevated = Number.isFinite(temp) && temp > 22;
+    const hasInc = S.incident && S.incident.state !== "resolved";
+    const alertBand = S.band === "RED" || S.band === "PURPLE" || S.band === "YELLOW";
+    return elevated || hasInc || alertBand;
   }
   $("#btn-demo")?.addEventListener("click", () => {
     const busy = rigBusy();

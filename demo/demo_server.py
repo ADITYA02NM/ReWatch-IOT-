@@ -84,7 +84,9 @@ class Sim:
                for k, v in EXTRAS.items()},
         })
         self.eng = engmod.ThreatEngine(ack_timeout=rw.env_float("DEMO_ACK_TIMEOUT_S", 20),
-                                       purple_hold=20, resolve_hold=4, device_policy=self.policy,
+                                       purple_hold=rw.env_float("DEMO_PURPLE_HOLD_S", 6),
+                                       resolve_hold=rw.env_float("DEMO_RESOLVE_HOLD_S", 2),
+                                       device_policy=self.policy,
                                        network_enforcement=False)
         self.anom = AnomalyDetector(device_profiles=self.policy.devices)
         self.firmware = FirmwareMonitor(self.policy)
@@ -264,7 +266,31 @@ class Sim:
     def rig(self, scenario: str, device: str = "room1-ac"):
         if scenario == "reset":
             for k, r in self.rooms.items():
-                r["setpoint"] = 20.0; r["target"] = 20.0; r["spiked"] = False
+                r["setpoint"] = 20.0; r["target"] = 20.0; r["spiked"] = False; r["temp"] = 20.0
+            self.anom.devices.clear()
+            self.eng.conditions.clear()
+            self.eng.impulses.clear()
+            self.eng._purple_until = 0.0
+            now = time.time()
+            if self.eng.incident:
+                inc = self.eng.incident
+                inc.state, inc.resolved_ts = "resolved", now
+                inc.timeline.append({"ts": now, "what": "resolved — setpoint restored"})
+                self.eng._emit_incident(inc)
+                self.eng.recent = ([inc] + self.eng.recent)[:10]
+                self.eng.incident = None
+            self.eng.band = rw.GREEN
+            self.eng.score = 0.0
+            self.eng._calm_since = now
+            self.nodes["core"].update(band="GREEN", score=0)
+            if self.state:
+                self.state["band"] = "GREEN"
+                self.state["score"] = 0.0
+                self.state["incident"] = None
+                self.state["reason"] = "All quiet — nothing above noise."
+            self._drain_engine()
+            self._emit({"kind": "rig", "sev": "info", "node": "rig",
+                        "title": "Test rig: reset — setpoints restored, band GREEN"})
         elif scenario == "ac-spike":
             self.discovered = True
             self._auto_spiked = True
