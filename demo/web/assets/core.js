@@ -80,9 +80,6 @@
     try {
       const config = await (await fetch("/api/demo-options", { cache: "no-store" })).json();
       demoPreview = config.passkey_preview === true;
-      if (demoPreview) {
-        $("#lk-unlock").textContent = "Passkey preview";
-      }
     } catch { /* Ordinary production authentication remains unchanged. */ }
     const st = await status();
     if (st.authenticated) { enter(); return; }
