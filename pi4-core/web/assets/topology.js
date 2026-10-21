@@ -8,6 +8,7 @@
   const ICONS = { ac: "❄", thermostat: "◉", camera: "◈", door: "▥", plug: "ϟ", light: "☀", fan: "✣", sensor: "◇", generic: "□" };
   const KIND_ORDER = { ac: 0, thermostat: 1, camera: 2, door: 3, plug: 4, light: 5, fan: 6, sensor: 7, generic: 8 };
   let S = null, selected = null, blackBuilt = false, pulses = [], lidTimer = null, lastEventTs = 0;
+  let mapHost = null, mapKey = "", mapNodes = [];
 
   const BOARDS = [
     { id: "sentinel", x: 14, y: 104, w: 122, h: 58, label: "PI 3 · SENTINEL", sub: "sniffer + USB log", lid: true },
@@ -150,6 +151,35 @@
       groups.get(kind).push(row);
     }
     const kinds = [...groups.keys()].sort((a, b) => (KIND_ORDER[a] ?? 8) - (KIND_ORDER[b] ?? 8));
+    const key = JSON.stringify(kinds);
+    if (mapHost !== host || mapKey !== key) {
+      buildMap(host, kinds);
+      mapHost = host; mapKey = key;
+    }
+    const hotDevices = new Set((S.events || []).filter((e) => e.device && Date.now() / 1000 - e.ts < 45).map((e) => e.device));
+    kinds.forEach((kind, i) => {
+      const members = groups.get(kind), entry = mapNodes[i];
+      const up = members.some(fresh), hot = members.some((m) => hotDevices.has(m.device));
+      const sel = members.some((m) => m.device === selected);
+      entry.node.setAttribute("class", `im-node im-kind${sel ? " selected" : ""}${up ? " up" : ""}`);
+      entry.node.setAttribute("aria-label", `${KIND_NAME[kind] || kind}, ${members.length} devices`);
+      entry.link.setAttribute("class", `im-link ${hot ? "hot" : up ? "up" : "stale"}`);
+      entry.title.textContent = kindSummary(kind, members);
+      entry.label.textContent = KIND_NAME[kind] || kind;
+      entry.locations.textContent = `${members.length}× · ${short(members.map((m) => m.room || m.device).join(", "))}`;
+      entry.status.textContent = up ? "up" : "stale";
+    });
+    const sub = $("#iot-sub");
+    if (sub) {
+      const up = rows.filter(fresh).length;
+      sub.textContent = rows.length
+        ? `${kinds.length} kinds · ${rows.length} devices · ${up} reporting`
+        : "no devices observed";
+    }
+  }
+
+  // Rebuild only when kinds change; streaming values never replace click targets.
+  function buildMap(host, kinds) {
     const boxX = 8, boxY = 118, boxW = 104, boxH = 58;
     const spineX = 150, nodeX = 186, nodeW = 224, nodeH = 32, top = 12, step = 40;
     const midY = boxY + boxH / 2;
@@ -163,36 +193,29 @@
       parts.push(`<line class="im-bus" x1="${spineX}" y1="${firstCy}" x2="${spineX}" y2="${lastCy}"/>`);
     }
     kinds.forEach((kind, i) => {
-      const members = groups.get(kind);
       const y = top + i * step, cy = y + nodeH / 2;
-      const up = members.some(fresh);
-      const hot = (S.events || []).some((e) => e.device && members.some((m) => m.device === e.device)
-        && Date.now() / 1000 - e.ts < 45);
-      const sel = members.some((m) => m.device === selected);
-      parts.push(`<line class="im-link ${hot ? "hot" : up ? "up" : "stale"}" x1="${spineX}" y1="${cy}" x2="${nodeX}" y2="${cy}"/>`);
-      parts.push(`<g class="im-node im-kind${sel ? " selected" : ""}${up ? " up" : ""}" data-kind="${kind}" tabindex="0" role="button" aria-label="${KIND_NAME[kind] || kind}, ${members.length} devices">
-        <title>${kindSummary(kind, members)}</title>
+      parts.push(`<line class="im-link" x1="${spineX}" y1="${cy}" x2="${nodeX}" y2="${cy}"/>`);
+      parts.push(`<g class="im-node im-kind" data-kind="${i}" tabindex="0" role="button">
+        <title></title>
         <rect x="${nodeX}" y="${y}" width="${nodeW}" height="${nodeH}" rx="6"/>
         <text class="im-icon" x="${nodeX + 16}" y="${cy + 4}">${ICONS[kind] || ICONS.generic}</text>
-        <text class="im-label" x="${nodeX + 34}" y="${cy - 2}">${KIND_NAME[kind] || kind}</text>
-        <text class="im-ip" x="${nodeX + 34}" y="${cy + 10}">${members.length}× · ${short(members.map((m) => m.room || m.device).join(", "))}</text>
-        <text class="im-ip" x="${nodeX + nodeW - 10}" y="${cy + 4}" text-anchor="end">${up ? "up" : "stale"}</text>
+        <text class="im-label" x="${nodeX + 34}" y="${cy - 2}"></text>
+        <text class="im-ip" x="${nodeX + 34}" y="${cy + 10}"></text>
+        <text class="im-ip" x="${nodeX + nodeW - 10}" y="${cy + 4}" text-anchor="end"></text>
       </g>`);
     });
     host.innerHTML = `<svg viewBox="0 0 420 300" role="img" aria-label="External IoT device kinds connected to the ReWatch box">${parts.join("")}</svg>`;
-    for (const node of host.querySelectorAll(".im-kind")) {
+    const links = host.querySelectorAll(".im-link");
+    mapNodes = [...host.querySelectorAll(".im-kind")].map((node, i) => {
+      node.dataset.kind = kinds[i];
       node.addEventListener("click", () => pickKind(node.dataset.kind));
       node.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pickKind(node.dataset.kind); }
       });
-    }
-    const sub = $("#iot-sub");
-    if (sub) {
-      const up = rows.filter(fresh).length;
-      sub.textContent = rows.length
-        ? `${kinds.length} kinds · ${rows.length} devices · ${up} reporting`
-        : "no devices observed";
-    }
+      const labels = node.querySelectorAll(".im-ip");
+      return { node, link: links[i], title: node.querySelector("title"), label: node.querySelector(".im-label"),
+        locations: labels[0], status: labels[1] };
+    });
   }
 
   function pickKind(kind) {

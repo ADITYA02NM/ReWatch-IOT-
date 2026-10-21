@@ -165,7 +165,7 @@ class DemoSimulationTests(unittest.TestCase):
         # discovery is also restored, so the first tick refreshes devices immediately.
         self.assertTrue(self.sim.discovered)
         self.sim.tick(200.5)
-        self.assertEqual(len(self.sim.telemetry), 10)
+        self.assertEqual(len(self.sim.telemetry), 28)
         # The AC-spike timer is relative to the new started_at (200.0).
         # At now=229.9 (29.9 s elapsed) the spike has not fired yet.
         self.sim.tick(229.9)

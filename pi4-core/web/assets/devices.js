@@ -19,7 +19,49 @@
   };
   let state = { telemetry: {}, devices: {}, nodes: {} }, inventory = [], selected = null;
   let started = false, controlsKey = "", loading = false;
+  let detailView = null;
   const fresh = (row) => row.observed && Date.now() / 1000 - Number(row.rx || 0) < 15;
+  function roomReading(kind, tel) {
+    const number = (key) => typeof tel[key] === "number" && Number.isFinite(tel[key]) ? tel[key] : null;
+    const power = tel.power === true || tel.power === "on" ? "on"
+      : tel.power === false || tel.power === "off" ? "off" : tel.power === "fault" ? "fault" : "unknown";
+    let value = "—", meta = "No state reported", percent = null, zone = "ok";
+    if (kind === "ac" || kind === "thermostat") {
+      const temp = number("temp_c"), setpoint = number("setpoint");
+      value = temp === null ? "—" : `${temp.toFixed(1)}°`;
+      meta = `set ${setpoint ?? "—"}° · ${power}`;
+      percent = temp === null ? null : (temp - 18) / 18 * 100;
+      zone = temp > 30 || power === "fault" ? "hot" : temp > 26 ? "warm" : "ok";
+    } else if (kind === "camera") {
+      value = tel.recording === true ? "Recording" : tel.recording === false ? "Paused" : "—";
+      meta = tel.recording === true ? "recording on" : tel.recording === false ? "recording off" : "No recording state";
+      percent = typeof tel.recording === "boolean" ? (tel.recording ? 100 : 0) : null;
+      zone = tel.recording === false ? "warm" : "ok";
+    } else if (kind === "door") {
+      value = tel.forced_open === true ? "Forced open" : tel.lock === true ? "Locked" : tel.lock === false ? "Unlocked" : "—";
+      meta = `lock ${tel.lock === true ? "on" : tel.lock === false ? "off" : "unknown"} · forced ${tel.forced_open === true ? "yes" : tel.forced_open === false ? "no" : "unknown"}`;
+      percent = typeof tel.lock === "boolean" ? (tel.lock ? 100 : 0) : null;
+      zone = tel.forced_open === true ? "hot" : tel.lock === false ? "warm" : "ok";
+    } else if (kind === "plug") {
+      const watts = number("power_w");
+      value = watts === null ? "—" : `${Math.round(watts)} W`;
+      meta = `power ${power}`;
+      percent = power === "on" ? 100 : power === "off" ? 0 : null;
+      zone = watts > 1500 ? "hot" : "ok";
+    } else if (kind === "light" || kind === "fan") {
+      const key = kind === "light" ? "brightness" : "speed", amount = number(key);
+      value = amount === null ? "—" : `${Math.round(amount)}%`;
+      meta = `${key} · power ${power}`;
+      percent = amount;
+    } else if (kind === "sensor") {
+      value = tel.smoke === true && tel.leak === true ? "Smoke + leak" : tel.smoke === true ? "Smoke"
+        : tel.leak === true ? "Leak" : tel.smoke === false && tel.leak === false ? "Clear" : "—";
+      meta = `smoke ${tel.smoke === true ? "yes" : tel.smoke === false ? "no" : "unknown"} · leak ${tel.leak === true ? "yes" : tel.leak === false ? "no" : "unknown"}`;
+      zone = tel.smoke === true || tel.leak === true ? "hot" : "ok";
+      percent = value === "—" ? null : 100;
+    }
+    return { value, meta, zone, percent: percent === null ? null : Math.max(0, Math.min(100, percent)) };
+  }
   function rows() {
     const merged = new Map(inventory.map((row) => [row.device, row]));
     for (const [id, tel] of Object.entries(state.telemetry)) {
@@ -60,66 +102,79 @@
   }
   function renderDetail(row, list) {
     const box = $("#device-detail"); if (!box) return;
-    box.replaceChildren();
-    if (!row) { box.append(make("p", "device-hint", "Select an external device to inspect its readings and reported identity.")); return; }
+    if (!row) {
+      if (detailView?.key !== "empty" || detailView.box !== box) {
+        box.replaceChildren(make("p", "device-hint", "Select an external device to inspect its readings and reported identity."));
+        detailView = { box, key: "empty" };
+      }
+      return;
+    }
+    const group = list.filter((r) => r.kind === row.kind);
+    const key = JSON.stringify([row.kind, group.map((r) => r.device)]);
+    if (detailView?.key !== key || detailView.box !== box) {
+      box.replaceChildren();
+      const heading = make("h3"), evidence = make("p", "device-evidence");
+      const badges = make("div", "device-badges"), link = make("span", "badge"), wifi = make("span", "badge");
+      badges.append(link, wifi);
+      const facts = make("dl", "device-facts"), values = [];
+      for (const label of ["Device ID", "Kind", "IP reported", "Firmware", "Adapter"]) {
+        const value = make("dd"); values.push(value); facts.append(make("dt", "", label), value);
+      }
+      box.append(heading, evidence, badges, facts);
+      const view = { box, key, heading, evidence, link, wifi, values, cards: new Map(), active: null, optionsKey: "" };
+      if (group.length > 1) {
+        const acView = row.kind === "ac", subs = make("div", "device-subs room-grid" + (acView ? " ac-rooms" : ""));
+        subs.append(make("h4", "", `${KIND_NAME[row.kind] || row.kind} · ${group.length} devices`));
+        view.summary = make("p", "sub-detail", "Hover or focus a device for its detailed summary.");
+        for (const member of group) {
+          const button = make("button", "device-sub device-room" + (acView ? " ac-room" : ""));
+          button.type = "button"; button.dataset.device = member.device;
+          const name = make("span", "device-room-name" + (acView ? " ac-room-name" : ""));
+          const value = make("span", "device-room-value" + (acView ? " ac-room-temp" : ""));
+          const bar = make("span", "device-bar" + (acView ? " ac-bar" : ""));
+          bar.setAttribute("aria-hidden", "true");
+          const fill = make("span"), meta = make("span", "device-room-meta" + (acView ? " ac-room-meta" : ""));
+          bar.append(fill); button.append(name, value, bar, meta);
+          const show = () => { view.active = member.device; view.summary.textContent = button.title; };
+          button.addEventListener("mouseenter", show); button.addEventListener("focus", show);
+          button.addEventListener("click", () => { selected = member.device; render(); window.ReWatchTopology?.select?.(member.device); });
+          view.cards.set(member.device, { button, name, value, fill, meta, acView });
+          subs.append(button);
+        }
+        subs.append(view.summary); box.append(subs);
+      }
+      view.options = make("div"); box.append(view.options);
+      detailView = view;
+    }
+    const view = detailView;
     const tel = state.telemetry[row.device] || {};
     const observed = ["temp_c", "setpoint", "power", "power_w", "recording", "lock", "brightness", "speed", "smoke", "leak"]
       .filter((key) => tel[key] != null).map((key) => key + "=" + String(tel[key])).join(" · ");
-    box.append(make("h3", "", row.room || row.device), make("p", "device-evidence", "Observed: " + (observed || "no state reported")));
-    const badges = make("div", "device-badges");
-    badges.append(make("span", "badge", fresh(row) ? "link · recent telemetry" : "link · not recently observed"),
-      make("span", "badge", state.verify[row.device]?.ok === true ? "wifi · matched" : state.verify[row.device]?.ok === false ? "wifi · mismatch" : "wifi · not verified"));
-    box.append(badges);
-    const facts = make("dl", "device-facts");
-    for (const [label, value] of [["Device ID", row.device], ["Kind", row.kind],
-      ["IP reported", row.ip], ["Firmware", row.firmware + " (unattested)"], ["Adapter", row.adapter]]) {
-      facts.append(make("dt", "", label), make("dd", "", value));
+    view.heading.textContent = row.room || row.device;
+    view.evidence.textContent = "Observed: " + (observed || "no state reported");
+    view.link.textContent = fresh(row) ? "link · recent telemetry" : "link · not recently observed";
+    view.wifi.textContent = state.verify[row.device]?.ok === true ? "wifi · matched" : state.verify[row.device]?.ok === false ? "wifi · mismatch" : "wifi · not verified";
+    [row.device, row.kind, row.ip, row.firmware + " (unattested)", row.adapter]
+      .forEach((value, index) => { view.values[index].textContent = value ?? ""; });
+    for (const member of group) {
+      const card = view.cards.get(member.device); if (!card) continue;
+      const reading = roomReading(member.kind, state.telemetry[member.device] || {});
+      card.button.className = "device-sub device-room" + (card.acView ? " ac-room" : "") + (member.device === selected ? " on" : "");
+      card.button.setAttribute("aria-pressed", String(member.device === selected));
+      card.button.title = [member.device, "ip " + member.ip, "firmware " + member.firmware + " (unattested)",
+        reading.value + " · " + reading.meta,
+        "wifi " + (state.verify[member.device]?.ok === true ? "matched" : state.verify[member.device]?.ok === false ? "mismatch" : "not verified"),
+        fresh(member) ? "link · recent" : "link · stale"].join(" · ");
+      card.name.textContent = member.room || member.device; card.value.textContent = reading.value;
+      card.meta.textContent = reading.meta;
+      card.fill.className = `device-bar-fill ${reading.zone}` + (card.acView ? " ac-bar-fill" : "");
+      card.fill.style.width = (reading.percent ?? 0).toFixed(1) + "%";
+      if (view.active === member.device) view.summary.textContent = card.button.title;
     }
-    box.append(facts);
-    /* Kind group: AC shows Room 1–4 as GUI blocks with temperature bars. */
-    const group = (list || []).filter((r) => r.kind === row.kind);
-    if (group.length > 1) {
-      const subs = make("div", "device-subs");
-      subs.append(make("h4", "", `${KIND_NAME[row.kind] || row.kind} · ${group.length} devices`));
-      const detail = make("p", "sub-detail", "Hover a device for its detailed summary.");
-      const acView = row.kind === "ac" && group.some((m) => state.telemetry[m.device]?.temp_c != null);
-      if (acView) subs.classList.add("ac-rooms");
-      for (const member of group) {
-        const tel = state.telemetry[member.device] || {};
-        const button = make("button", "device-sub" + (member.device === row.device ? " on" : ""));
-        button.type = "button"; button.dataset.device = member.device;
-        button.title = [member.device, "ip " + member.ip, "firmware " + member.firmware + " (unattested)",
-          "wifi " + (state.verify[member.device]?.ok === true ? "matched" : state.verify[member.device]?.ok === false ? "mismatch" : "not verified"),
-          fresh(member) ? "link · recent" : "link · stale"].join(" · ");
-        if (acView) {
-          const t = Number(tel.temp_c), sp = Number(tel.setpoint ?? 20);
-          const pct = Math.max(0, Math.min(100, ((t - 18) / (36 - 18)) * 100));
-          const zone = t > 30 ? "hot" : t > 26 ? "warm" : "ok";
-          button.classList.add("ac-room");
-          button.append(make("span", "ac-room-name", member.room || member.device));
-          button.append(make("span", "ac-room-temp", Number.isFinite(t) ? `${t.toFixed(1)}°` : "—"));
-          const bar = make("span", "ac-bar");
-          const fill = make("span", `ac-bar-fill ${zone}`);
-          fill.style.width = pct.toFixed(1) + "%";
-          bar.append(fill); button.append(bar);
-          const meta = make("span", "ac-room-meta",
-            `set ${Number.isFinite(sp) ? sp : "—"}° · ${tel.power === "fault" ? "fault" : tel.power || "on"}`);
-          button.append(meta);
-        } else {
-          const compact = ["temp_c", "setpoint", "power", "recording", "lock", "brightness", "speed", "power_w", "smoke", "leak"]
-            .filter((key) => tel[key] != null).map((key) => `${key}=${tel[key]}`).join(" · ");
-          button.textContent = `${member.room || member.device} · ${compact || "no state"}`;
-        }
-        const show = () => { detail.textContent = button.title; };
-        button.addEventListener("mouseenter", show);
-        button.addEventListener("focus", show);
-        button.addEventListener("click", () => { selected = member.device; render(); window.ReWatchTopology?.select?.(member.device); });
-        subs.append(button);
-      }
-      subs.append(detail);
-      box.append(subs);
+    const optionsKey = JSON.stringify([row.device, row.actions, fresh(row), state.conn, group.map((r) => [r.device, r.room, r.actions])]);
+    if (view.optionsKey !== optionsKey) {
+      view.optionsKey = optionsKey; view.options.replaceChildren(controlOptions(row, list));
     }
-    box.append(controlOptions(row, list));
   }
   /* The details panel is the entry point for acting on any external IoT device. */
   function controlOptions(row, list) {
@@ -145,9 +200,9 @@
         line.append(text, button); wrap.append(line);
       }
     }
-    const others = (list || []).filter((r) => r.device !== row.device);
+    const others = (list || []).filter((r) => r.kind === row.kind && r.device !== row.device);
     if (others.length) {
-      wrap.append(make("h4", "", "Other external IoT devices"));
+      wrap.append(make("h4", "", "Other locations · " + (KIND_NAME[row.kind] || row.kind)));
       const chips = make("div", "device-chips");
       for (const other of others) {
         const chip = make("button", "chip", (other.room || other.device));
@@ -173,7 +228,8 @@
     const select = make("select"); select.id = "control-target";
     select.setAttribute("aria-label", "Device to control");
     for (const option of list || []) {
-      const element = make("option", "", (option.room || option.device) + (option.actions?.length ? "" : " · observe-only"));
+      const element = make("option", "", (KIND_NAME[option.kind] || option.kind) + " · "
+        + (option.room || option.device) + (option.actions?.length ? "" : " · observe-only"));
       element.value = option.device; select.append(element);
     }
     select.value = row.device;

@@ -53,6 +53,16 @@
     p.lastElementChild.textContent = c.toUpperCase();
   }
 
+  let renderFrame = null;
+  function scheduleRender() {
+    if (renderFrame !== null) return;
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (cb) => setTimeout(cb, 16);
+    renderFrame = raf(() => {
+      renderFrame = null;
+      renderAll();
+    });
+  }
+
   function hydrate(m) {
     S.nodes = m.nodes || {}; S.telemetry = m.telemetry || {}; S.verify = m.verify || {};
     S.history = (m.history || []).slice(-600); S.events = (m.events || []).slice(-200);
@@ -61,15 +71,15 @@
     if (m.version) $("#f-ver").textContent = "ReWatch IoT · SIMULATION · " + m.version;
     if (m.briefing != null) briefingState(m.briefing);
     if (m.state) applyState(m.state);
-    renderEvents(); renderIncident(); renderAll();
+    renderEvents(); renderIncident(); scheduleRender();
   }
 
   function onBus(topic, d) {
     const p = topic.split("/");
     if (topic === "rewatch/threat/state") applyState(d);
-    else if (p[1] === "health" && p[2]) { S.nodes[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderAll(); }
-    else if (p[1] === "iot" && p[3] === "telemetry") { S.telemetry[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderAll(); }
-    else if (p[1] === "verify" && p[2]) { S.verify[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); renderAll(); }
+    else if (p[1] === "health" && p[2]) { S.nodes[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); scheduleRender(); }
+    else if (p[1] === "iot" && p[3] === "telemetry") { S.telemetry[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); scheduleRender(); }
+    else if (p[1] === "verify" && p[2]) { S.verify[p[2]] = Object.assign({}, d, { rx: Date.now() / 1000 }); scheduleRender(); }
   }
 
   function applyState(st) {
@@ -81,10 +91,14 @@
     if (st.ts) { const tail = S.history[S.history.length - 1]; if (!tail || st.ts - tail[0] > 0.8) S.history.push([st.ts, S.score, S.band]); if (S.history.length > 600) S.history.shift(); }
     if (S.band !== prevBand) onBandChange(S.band);
     document.documentElement.setAttribute("data-band", S.band);
-    renderAll();
+    scheduleRender();
   }
 
   function renderAll() {
+    if (renderFrame !== null && typeof cancelAnimationFrame === "function") {
+      try { cancelAnimationFrame(renderFrame); } catch {}
+    }
+    renderFrame = null;
     renderRisk(); renderIncident(); renderEvents();
     const demo = $("#btn-demo");
     if (demo) demo.textContent = rigBusy() ? "■ Simulate · AC stop" : "▶ Simulate · AC start/stop";

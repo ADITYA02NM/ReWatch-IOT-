@@ -57,12 +57,31 @@ PAGES = {"/": "index.html", "/index.html": "index.html", "/reports.html": "repor
          "/debug.html": "debug.html", "/manual.html": "manual.html"}
 ROOMS = {"room1-ac": "Room 1", "room2-ac": "Room 2", "room3-ac": "Room 3", "room4-ac": "Room 4"}
 EXTRAS = {
-    "entry-camera": {"kind": "camera", "room": "Entrance camera", "recording": True},
-    "entry-door": {"kind": "door", "room": "Entrance door", "lock": True, "forced_open": False},
-    "lobby-plug": {"kind": "plug", "room": "Lobby plug", "power": True, "power_w": 120},
-    "lobby-light": {"kind": "light", "room": "Lobby light", "power": True, "brightness": 70},
-    "lobby-fan": {"kind": "fan", "room": "Lobby fan", "power": True, "speed": 40},
-    "safety-sensor": {"kind": "sensor", "room": "Safety sensor", "smoke": False, "leak": False},
+    # Existing IDs stay stable; locations describe the simulated office.
+    "entry-camera": {"kind": "camera", "room": "Reception", "recording": True},
+    "entrance-camera": {"kind": "camera", "room": "Main Entrance", "recording": True},
+    "corridor-camera": {"kind": "camera", "room": "Corridor", "recording": True},
+    "parking-camera": {"kind": "camera", "room": "Parking", "recording": True},
+    "entry-door": {"kind": "door", "room": "Main Entrance", "lock": True, "forced_open": False},
+    "meeting-door": {"kind": "door", "room": "Meeting Room", "lock": True, "forced_open": False},
+    "server-door": {"kind": "door", "room": "Server Room", "lock": True, "forced_open": False},
+    "exit-door": {"kind": "door", "room": "Emergency Exit", "lock": True, "forced_open": False},
+    "lobby-plug": {"kind": "plug", "room": "Workstations", "power": True, "power_w": 120},
+    "printer-plug": {"kind": "plug", "room": "Printer Area", "power": True, "power_w": 80},
+    "pantry-plug": {"kind": "plug", "room": "Pantry", "power": True, "power_w": 60},
+    "server-plug": {"kind": "plug", "room": "Server Rack", "power": True, "power_w": 350},
+    "lobby-light": {"kind": "light", "room": "Reception", "power": True, "brightness": 70},
+    "office-light": {"kind": "light", "room": "Open Office", "power": True, "brightness": 80},
+    "meeting-light": {"kind": "light", "room": "Meeting Room", "power": True, "brightness": 60},
+    "corridor-light": {"kind": "light", "room": "Corridor", "power": True, "brightness": 50},
+    "lobby-fan": {"kind": "fan", "room": "Open Office", "power": True, "speed": 40},
+    "meeting-fan": {"kind": "fan", "room": "Meeting Room", "power": True, "speed": 30},
+    "pantry-fan": {"kind": "fan", "room": "Pantry", "power": True, "speed": 50},
+    "utility-fan": {"kind": "fan", "room": "Utility Room", "power": True, "speed": 60},
+    "safety-sensor": {"kind": "sensor", "room": "Server Room", "smoke": False, "leak": False},
+    "pantry-sensor": {"kind": "sensor", "room": "Pantry", "smoke": False, "leak": False},
+    "washroom-sensor": {"kind": "sensor", "room": "Washroom", "smoke": False, "leak": False},
+    "office-sensor": {"kind": "sensor", "room": "Open Office", "smoke": False, "leak": False},
 }
 DEMO_ACTIONS = {"camera": ["recording"], "door": ["lock"], "plug": ["power"],
                 "light": ["power", "brightness"], "fan": ["power", "speed"], "sensor": []}
@@ -142,6 +161,9 @@ class Sim:
                     "setpoint": r["setpoint"],
                     "power": "on",
                 }
+        for dev, fields in self.extras.items():
+            if dev in saved_telemetry:
+                saved_telemetry[dev] = {**saved_telemetry[dev], **fields}
         self.telemetry = saved_telemetry
         self.verify = saved_verify
         self.discovered = saved_discovered
@@ -319,11 +341,11 @@ class Sim:
             if elapsed >= 30 and not self._auto_spiked and rw.env_bool("DEMO_AUTO_SPIKE", True):
                 self.rig("ac-spike")
         # devices ease toward target + tiny noise; publish telemetry -> anomaly -> engine
-        for dev, r in (self.rooms.items() if self.discovered else []):
+        for i, (dev, r) in enumerate(self.rooms.items() if self.discovered else []):
             r["temp"] += (r["target"] - r["temp"]) * 0.18 + random.uniform(-0.05, 0.05)
             tel = {"device": dev, "room": r["room"], "kind": "ac",
                    "temp_c": round(r["temp"], 1), "setpoint": r["setpoint"],
-                   "ip": "192.168.100.5", "firmware": "demo-rig-1.0",
+                   "ip": f"192.168.100.{50+i}", "firmware": "demo-rig-1.0",
                    "power": "fault" if r["spiked"] else "on"}
             self.telemetry[dev] = {**tel, "rx": now}
             self.eng.on_message(rw.topic("iot", dev, "telemetry"), tel, now)
@@ -349,7 +371,7 @@ class Sim:
         # emit routine verified telemetry status to keep the feed actively bustling.
         if not self.briefing and random.random() < 0.04 and self.discovered and self.eng.score == 0:
             regular_logs = [
-                ("Sentinel: routine ARP subnet scan — 10 nodes responding, 0 drift", "sentinel"),
+                (f"Sentinel: routine ARP subnet scan — {len(self.telemetry)} devices responding, 0 drift", "sentinel"),
                 ("Core: dual-path verify check — Wi-Fi + MQTT in 0.1 °C parity", "core"),
                 ("ESP32-WROOM: room rig GPIO ADC calibration nominal (3.3V stable)", "rig"),
                 ("Sentinel: USB audit log checkpoint — framing checksums valid", "sentinel"),

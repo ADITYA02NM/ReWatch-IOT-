@@ -189,3 +189,22 @@ not confirmed) · <subject>" rather than claiming delivery.
 - Verification: `260 passed, 141 warnings, 139 subtests`; `ruff --select F`
   clean; `node --check` clean on all JS. Browser suite re-run is pending on the
   operator's machine.
+
+## Smart-office location cards (2026-10-21)
+
+- Expanded the demo from ten to **28 simulated devices**, four per kind, with
+  office-appropriate locations and unique simulated addresses.
+- All seven kinds now use location cards with kind-specific readings, keyboard
+  selection, hover/focus evidence and per-device controls. Sensors stay
+  observe-only; door controls stay lock-only and require confirmation.
+- Replay retains discovered inventory and immediately restores both AC and
+  non-AC baseline readings while clearing the live score, events and graph.
+- Added inventory/control/replay contracts and a Node-based renderer regression
+  test; updated browser expectations for four cards per kind and 28 devices.
+- Fast verification: `273 passed, 141 warnings, 139 subtests passed`;
+  `ruff check . --select F` clean; JavaScript syntax checks clean on all modules.
+- Added streaming batching (`requestAnimationFrame`) in `live.js` and stable SVG kind retention
+  in `topology.js`; covered by Node contracts in `tests/dashboard_rendering.cjs`.
+- Playwright browser suite (`tests/browser_demo.py`): 100% passed across all 15 integration steps
+  including single-screen dashboard constraints, 28 office devices, 4 location cards per kind,
+  control forms, and mobile viewport checks.

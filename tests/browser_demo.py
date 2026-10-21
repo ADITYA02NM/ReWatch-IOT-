@@ -247,7 +247,7 @@ def main():
                 if state["demo_elapsed"] < 20:
                     early_discovery |= bool(count or state["telemetry"])
                     return False
-                return count == 7 and len(state["telemetry"]) == 10
+                return count == 7 and len(state["telemetry"]) == 28
 
             dashboard.wait_state(discovered, timeout=27)
             expect(page.locator(".im-kind")).to_have_count(7)
@@ -259,7 +259,7 @@ def main():
             kinds = dashboard.map_kinds()
             assert kinds == ["ac", "camera", "door", "plug", "light", "fan", "sensor"], \
                 "Connections flowchart must show overall device kinds in order: " + repr(kinds)
-            check("ten devices discovered at 20 seconds; flowchart shows 7 overall kinds; AC leads")
+            check("28 office devices discovered at 20 seconds; flowchart shows 7 overall kinds; AC leads")
 
             # Clicking a kind expands its sub-devices with a hoverable summary.
             page.locator('.im-kind[data-kind="ac"]').click()
@@ -281,17 +281,32 @@ def main():
             expect(page.locator("#device-detail h3")).to_have_text("Room 3")
             check("AC kind expands Room 1-4 sub-devices; hover gives the detailed summary")
 
+            locations = {
+                "camera": {"Reception", "Main Entrance", "Corridor", "Parking"},
+                "door": {"Main Entrance", "Meeting Room", "Server Room", "Emergency Exit"},
+                "plug": {"Workstations", "Printer Area", "Pantry", "Server Rack"},
+                "light": {"Reception", "Open Office", "Meeting Room", "Corridor"},
+                "fan": {"Open Office", "Meeting Room", "Pantry", "Utility Room"},
+                "sensor": {"Server Room", "Pantry", "Washroom", "Open Office"},
+            }
+            for kind, expected_locations in locations.items():
+                page.locator(f'.im-kind[data-kind="{kind}"]').click()
+                expect(page.locator(".device-room")).to_have_count(4)
+                assert set(page.locator(".device-room-name").all_text_contents()) == expected_locations
+                expect(page.locator(".device-room-value")).to_have_count(4)
+            check("all seven kinds expand into four location cards with kind-specific readings")
+
             dashboard.select_device("lobby-plug")
             detail = page.get_by_role("complementary", name="Selected device")
-            expect(detail.get_by_role("heading", name="Lobby plug")).to_be_visible()
+            expect(detail.get_by_role("heading", name="Workstations")).to_be_visible()
             # Selecting a device in the IoT section exposes its control options.
             expect(detail.locator(".control-options")).to_be_visible()
             expect(detail.locator(".option-row")).to_have_count(1)
             expect(detail.locator(".option-row").first).to_contain_text("power")
-            expect(detail.locator(".device-chips .chip")).to_have_count(9)
+            expect(detail.locator(".device-chips .chip")).to_have_count(3)
             controls = page.locator("#device-controls")
-            expect(controls.get_by_role("heading")).to_contain_text("Lobby plug")
-            expect(page.locator("#control-target option")).to_have_count(10)
+            expect(controls.get_by_role("heading")).to_contain_text("Workstations")
+            expect(page.locator("#control-target option")).to_have_count(28)
             # The details panel hands over to the matching control form.
             detail.locator(".option-row .btn").click()
             expect(page.locator('#device-controls .device-control[data-action="power"]')).to_be_visible()

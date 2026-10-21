@@ -32,13 +32,14 @@ requires an enrolled credential and a verified ceremony.
 
 ## Recording sequence and controls
 
-Only **Replay** resets the shared simulation timeline. Refresh, including
-**Ctrl+Shift+R**, reconnects to the current simulation rather than resetting it.
-All viewers share one building; Replay affects every viewer.
+**Replay** or **Ctrl+Shift+R** resets the shared demo timeline, score, events and
+graph while retaining discovered devices and restoring their simulated baseline
+readings. Ordinary refresh reconnects without resetting. All viewers share one
+building; Replay affects every viewer.
 
 | Time from Replay | Scenario |
 | --- | --- |
-| +20 s | Ten devices appear: four ACs, camera, door, plug, light, fan and sensor |
+| +20 s on initial discovery | 28 devices appear: four each of AC, camera, door, plug, light, fan and sensor |
 | +30 s | Room 1 starts heating toward 35 °C |
 | Warning, then critical hold | YELLOW, then RED opens an incident |
 | RED +20 s without ACK | PURPLE; a simulated command requests the 20 °C setpoint |
@@ -62,12 +63,34 @@ published score breathes gently, always well inside GREEN), **02 Alerts**
 (schematic of the box internals with packet pulses on live events and lids
 opening on detections), **04 IoT connections** (a modular flowchart: the ReWatch
 box feeds seven device-kind nodes — AC, camera, door, plug, light, fan, sensor —
-with live counts; selecting a kind, e.g. AC, reveals its Room 1–4 sub-devices
-with hoverable details), **05 Controls** (Demo AC start/stop, Clear, Export .md,
+with live counts; selecting any kind reveals four location cards with live
+readings and hover/focus details), **05 Controls** (Demo AC start/stop, Clear, Export .md,
 Refresh, OLED+LED preview, Mail test, Replay, Black Hat feed, Firmware drill)
 and **06 IoT details** (kind groups with sub-device evidence, firmware facts and
 the capability-approved control forms). On a phone, panels appear one at a time
 through the footer switcher.
+
+### Simulated office inventory
+
+These are synthetic devices, not discovered physical office hardware. Each
+location has its own device ID, simulated IP and capability-approved controls.
+
+| Kind | Locations | Card reading / controls |
+| --- | --- | --- |
+| AC | Room 1, Room 2, Room 3, Room 4 | Temperature and setpoint / setpoint |
+| Camera | Reception, Main Entrance, Corridor, Parking | Recording status / recording |
+| Door | Main Entrance, Meeting Room, Server Room, Emergency Exit | Lock and forced-open status / lock only, with confirmation |
+| Plug | Workstations, Printer Area, Pantry, Server Rack | Observed watts and power status / power |
+| Light | Reception, Open Office, Meeting Room, Corridor | Brightness and power status / brightness, power |
+| Fan | Open Office, Meeting Room, Pantry, Utility Room | Speed and power status / speed, power |
+| Sensor | Server Room, Pantry, Washroom, Open Office | Smoke and leak status / observe-only |
+
+All kinds use the same two-column location-card layout. Hover or focus a card
+for its ID, IP, reported firmware (unattested) and link evidence; click it to
+select that individual device. Missing readings show **—**, not an invented
+healthy state. Selecting or controlling one location does not select or change
+its peers. The control selector includes the device kind to distinguish shared
+location names such as Meeting Room.
 
 The five-hour report uses SQLite-retained events, score samples and incidents
 across Replay and process restart. Five hours is a reporting window, not a claim

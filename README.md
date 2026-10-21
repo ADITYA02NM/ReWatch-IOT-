@@ -113,14 +113,15 @@ This deliberately simple local demo code is not a production password.
 | Recording step | Behavior |
 | --- | --- |
 | First dashboard connection or Replay | Start the shared simulation timeline |
-| +20 s | Ten simulated devices appear, including four ACs near 20 °C |
+| +20 s on first connection | 28 simulated office devices appear, four per kind, including ACs near 20 °C |
 | +30 s | Room 1 begins heating toward 35 °C |
 | Warning → critical | YELLOW then RED after the detector's critical hold |
 | RED +20 s, no ACK | PURPLE; simulated command returns the AC setpoint to 20 °C |
 | ACK before deadline | Automatic action cancelled; abnormal temperature remains until reset |
 
-All viewers share one simulated building. **Refresh, including Ctrl+Shift+R,
-reconnects without resetting it; only Replay resets the scene.** Black Hat feed
+All viewers share one simulated building. Ordinary refresh reconnects without
+resetting it. **Replay or Ctrl+Shift+R resets the demo scene while preserving
+discovered device inventory.** Black Hat feed
 injects synthetic detections only—it launches no scans or attacks. Manual AC
 spike/reset and firmware-version-change controls are separate. SQLite retains
 events, samples and incidents across Replay and server restarts. The five-hour
@@ -131,7 +132,10 @@ report window displays accumulated evidence, not five hours of fabricated data.
 The logical topology lists observed/enrolled devices and selectable evidence.
 MQTT bridge profiles support AC/thermostat setpoints, camera recording, door
 **locking only**, plug/light/fan power, light brightness and fan speed. Sensors
-are observe-only. The demo provides ten synthetic devices across these types.
+are observe-only. The demo provides **28 synthetic office devices**, four per
+kind. Selecting any kind shows four location cards in the same format as the
+AC rooms, with live kind-specific readings and hover/focus evidence. See the
+[demo office inventory](demo/README.md#simulated-office-inventory) for locations.
 This is **not native ONVIF, Matter, HomeKit or arbitrary IP-camera integration**;
 each real device needs a trusted bridge implementing the topic contract.
 
