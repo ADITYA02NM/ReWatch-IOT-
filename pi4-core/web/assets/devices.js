@@ -76,22 +76,40 @@
       facts.append(make("dt", "", label), make("dd", "", value));
     }
     box.append(facts);
-    /* Kind group: AC shows Room 1–4 with readings, hover gives the full summary. */
+    /* Kind group: AC shows Room 1–4 as GUI blocks with temperature bars. */
     const group = (list || []).filter((r) => r.kind === row.kind);
     if (group.length > 1) {
       const subs = make("div", "device-subs");
       subs.append(make("h4", "", `${KIND_NAME[row.kind] || row.kind} · ${group.length} devices`));
       const detail = make("p", "sub-detail", "Hover a device for its detailed summary.");
+      const acView = row.kind === "ac" && group.some((m) => state.telemetry[m.device]?.temp_c != null);
+      if (acView) subs.classList.add("ac-rooms");
       for (const member of group) {
         const tel = state.telemetry[member.device] || {};
-        const compact = ["temp_c", "setpoint", "power", "recording", "lock", "brightness", "speed", "power_w", "smoke", "leak"]
-          .filter((key) => tel[key] != null).map((key) => `${key}=${tel[key]}`).join(" · ");
-        const button = make("button", "device-sub" + (member.device === row.device ? " on" : ""),
-          `${member.room || member.device} · ${compact || "no state"}`);
+        const button = make("button", "device-sub" + (member.device === row.device ? " on" : ""));
         button.type = "button"; button.dataset.device = member.device;
         button.title = [member.device, "ip " + member.ip, "firmware " + member.firmware + " (unattested)",
           "wifi " + (state.verify[member.device]?.ok === true ? "matched" : state.verify[member.device]?.ok === false ? "mismatch" : "not verified"),
           fresh(member) ? "link · recent" : "link · stale"].join(" · ");
+        if (acView) {
+          const t = Number(tel.temp_c), sp = Number(tel.setpoint ?? 20);
+          const pct = Math.max(0, Math.min(100, ((t - 18) / (36 - 18)) * 100));
+          const zone = t > 30 ? "hot" : t > 26 ? "warm" : "ok";
+          button.classList.add("ac-room");
+          button.append(make("span", "ac-room-name", member.room || member.device));
+          button.append(make("span", "ac-room-temp", Number.isFinite(t) ? `${t.toFixed(1)}°` : "—"));
+          const bar = make("span", "ac-bar");
+          const fill = make("span", `ac-bar-fill ${zone}`);
+          fill.style.width = pct.toFixed(1) + "%";
+          bar.append(fill); button.append(bar);
+          const meta = make("span", "ac-room-meta",
+            `set ${Number.isFinite(sp) ? sp : "—"}° · ${tel.power === "fault" ? "fault" : tel.power || "on"}`);
+          button.append(meta);
+        } else {
+          const compact = ["temp_c", "setpoint", "power", "recording", "lock", "brightness", "speed", "power_w", "smoke", "leak"]
+            .filter((key) => tel[key] != null).map((key) => `${key}=${tel[key]}`).join(" · ");
+          button.textContent = `${member.room || member.device} · ${compact || "no state"}`;
+        }
         const show = () => { detail.textContent = button.title; };
         button.addEventListener("mouseenter", show);
         button.addEventListener("focus", show);

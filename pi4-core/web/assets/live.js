@@ -136,7 +136,7 @@
     ul.innerHTML = "";
     for (const e of list) {
       const li = el("li", "s-" + (e.sev || "info") + " k-" + e.kind);
-      li.innerHTML = `<span class="d"></span><span class="tm">${hms(e.ts)}</span><span class="tx">${esc(e.title)}<small>${esc(e.node || e.kind)}${e.src ? " · " + esc(e.src) : ""}</small></span>`;
+      li.innerHTML = `<span class="d"></span><span class="tm">${hms(e.ts)}</span><span class="tx">${esc(e.title)}</span>`;
       li.append(ackButton(e));
       ul.appendChild(li);
     }

@@ -145,8 +145,7 @@ class DemoSimulationTests(unittest.TestCase):
 
         self.replay(200.0)
         snapshot = self.sim.snapshot()
-        self.assertEqual(snapshot["telemetry"], {})
-        self.assertEqual(snapshot["verify"], {})
+        # Score / events / history / incident are cleared by replay.
         self.assertEqual(snapshot["events"], [])
         self.assertEqual(snapshot["history"], [])
         self.assertFalse(self.sim.briefing)
@@ -155,16 +154,23 @@ class DemoSimulationTests(unittest.TestCase):
         self.assertEqual(self.sim.eng.conditions, {})
         self.assertEqual(self.sim.eng.impulses, [])
         self.assertEqual(self.sim.eng.devices, {})
+        # Rooms reset to cold state.
         for room in self.sim.rooms.values():
             self.assertEqual(room["target"], 20)
             self.assertEqual(room["setpoint"], 20)
             self.assertFalse(room["spiked"])
-        self.sim.tick(219.9)
-        self.assertEqual(self.sim.telemetry, {})
-        self.sim.tick(220.0)
+        # IoT device inventory is PRESERVED across replay (connections map stays live).
+        self.assertNotEqual(snapshot["telemetry"], {}, "telemetry should survive replay")
+        self.assertNotEqual(snapshot["verify"], {}, "verify should survive replay")
+        # discovery is also restored, so the first tick refreshes devices immediately.
+        self.assertTrue(self.sim.discovered)
+        self.sim.tick(200.5)
         self.assertEqual(len(self.sim.telemetry), 10)
+        # The AC-spike timer is relative to the new started_at (200.0).
+        # At now=229.9 (29.9 s elapsed) the spike has not fired yet.
         self.sim.tick(229.9)
         self.assertFalse(self.sim.rooms["room1-ac"]["spiked"])
+        # At now=230.0 (exactly 30 s elapsed) the auto-spike fires.
         self.sim.tick(230.0)
         self.assertTrue(self.sim.rooms["room1-ac"]["spiked"])
 

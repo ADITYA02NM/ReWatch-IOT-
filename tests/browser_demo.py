@@ -349,7 +349,9 @@ def main():
             saved = dashboard.report()
             saved_ids = {event["id"] for event in saved["events"]}
             dashboard.click("#btn-replay")
-            dashboard.wait_state(lambda s: s["demo_elapsed"] < 5 and not s["telemetry"])
+            # After replay: elapsed resets but IoT devices (telemetry) are preserved.
+            # History and in-memory events are cleared; the score resets to zero.
+            dashboard.wait_state(lambda s: s["demo_elapsed"] < 5 and not s["events"])
             assert saved_ids <= {event["id"] for event in dashboard.report()["events"]}
             dashboard.click("#btn-demo")
             expect(page.locator("#ack")).to_be_enabled(timeout=25000)

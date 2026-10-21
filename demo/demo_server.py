@@ -112,11 +112,23 @@ class Sim:
         self.generation = 0
 
     def replay(self, now: float) -> None:
-        """One shared building: an explicit replay resets every connected viewer."""
+        """One shared building: an explicit replay resets every connected viewer.
+
+        Score / events / graph / incident are cleared by __init__.
+        IoT device inventory (telemetry, verify, discovered) is preserved so
+        the connections map never goes blank during a replay.
+        """
+        saved_telemetry = dict(self.telemetry)
+        saved_verify = dict(self.verify)
+        saved_discovered = self.discovered
         generation = self.generation + 1
         self.__init__(self.app, self.send_mail)
         self.generation = generation
         self.started_at = now
+        # Restore device inventory — discovery-gated loops will keep refreshing it.
+        self.telemetry = saved_telemetry
+        self.verify = saved_verify
+        self.discovered = saved_discovered
 
     def apply_mail_result(self, result: dict) -> None:
         ok = result.get("ok") is True
@@ -290,7 +302,7 @@ class Sim:
                                 "wifi_temp": round(r["temp"], 1), "rx": now}
             self.eng.on_message(rw.topic("verify", dev), {**self.verify[dev], "alarm": False}, now)
 
-        if self.briefing and random.random() < 0.08:
+        if self.briefing and random.random() < 0.14:
             self._random_event(now)
 
         for i, (dev, fields) in enumerate(self.extras.items() if self.discovered else []):
@@ -350,17 +362,76 @@ class Sim:
                 self.history.pop(0)
 
     def _random_event(self, now: float):
-        kinds = [
-            ("portscan", "high", f"TCP port scan from 192.168.100.{random.randint(20,250)} — "
-             f"{random.randint(40,500)} ports"),
-            ("arpsweep", "medium", f"Host-discovery sweep from 192.168.100.{random.randint(20,250)}"),
-            ("newdevice", "low", f"New device on the LAN — {_mac()} (192.168.100.{random.randint(20,250)})"),
-            ("pingsweep", "medium", f"Ping sweep from 192.168.100.{random.randint(20,250)}"),
+        _ip = lambda: f"192.168.100.{random.randint(20, 250)}"  # noqa: E731
+        _room = lambda: random.choice(list(ROOMS.values()))  # noqa: E731
+        # Network scan / discovery detections.
+        # All non-anomaly topics are counted by summary.ReportWindow.observe().
+        network_pool = [
+            ("portscan",  "critical", f"Aggressive TCP port scan from {_ip()} — {random.randint(500,5000)} ports probed"),
+            ("portscan",  "high",     f"TCP port scan from {_ip()} — {random.randint(40,499)} ports"),
+            ("arpsweep",  "high",     f"ARP sweep from {_ip()} — full subnet enumeration"),
+            ("arpsweep",  "medium",   f"Host-discovery ARP sweep from {_ip()}"),
+            ("pingsweep", "high",     f"ICMP sweep from {_ip()} — {random.randint(20,254)} hosts"),
+            ("pingsweep", "medium",   f"Ping sweep from {_ip()}"),
+            ("newdevice", "medium",   f"New device on LAN — {_mac()} ({_ip()})"),
+            ("newdevice", "low",      f"Unregistered MAC {_mac()} joined 192.168.100.0/24"),
+            ("flood",     "critical", f"UDP flood from {_ip()} — {random.randint(10,100)} kpps"),
+            ("slow-scan", "medium",   f"Slow stealth scan from {_ip()} — evading rate limits"),
         ]
-        kind, sev, title = random.choice(kinds)
-        ev = rw.make_event(kind, sev, title, src=f"192.168.100.{random.randint(20,250)}")
-        self._detect(rw.topic("detect", kind), ev, now)
-        self._emit({"kind": kind, "sev": sev, "title": title, "node": "sentinel", "src": ev["src"]})
+        # IoT-device alerts.
+        # detect_kind is the engine/summary topic (integrity or device-offline — counted, not filtered).
+        # display_kind is the emit kind shown in the UI.
+        # Tuple: (detect_kind, display_kind, sev, device, title)
+        iot_pool = [
+            # Camera events
+            ("integrity",     "anomaly", "critical", "entry-camera", "Camera motion detected — unscheduled access corridor"),
+            ("integrity",     "anomaly", "high",     "entry-camera", "Camera recording gap — 47 s of missing footage"),
+            ("integrity",     "anomaly", "medium",   "entry-camera", "Camera stream jitter — possible network interference"),
+            ("device-offline","anomaly", "low",      "entry-camera", "Camera rebooted — firmware watchdog triggered"),
+            # Door events
+            ("integrity",     "anomaly", "critical", "entry-door",   "Forced-open alarm — entry door breached without auth"),
+            ("integrity",     "anomaly", "high",     "entry-door",   "Door held open > 30 s — tailgating risk"),
+            ("integrity",     "anomaly", "medium",   "entry-door",   "Door unlock command from unrecognised source"),
+            ("device-offline","anomaly", "low",      "entry-door",   "Door sensor battery low — replacement recommended"),
+            # Plug events
+            ("integrity",     "anomaly", "critical", "lobby-plug",   "Plug power spike — 2.4 kW surge (rated 1.5 kW)"),
+            ("integrity",     "anomaly", "high",     "lobby-plug",   "Lobby plug on outside scheduled hours"),
+            ("integrity",     "anomaly", "medium",   "lobby-plug",   "Plug power draw anomaly — 40 % above baseline"),
+            ("device-offline","anomaly", "low",      "lobby-plug",   "Plug RSSI degraded — possible obstruction"),
+            # Light events
+            ("integrity",     "anomaly", "high",     "lobby-light",  "Lights on in unoccupied zone (PIR negative)"),
+            ("integrity",     "anomaly", "medium",   "lobby-light",  "Light brightness command rejected — controller unresponsive"),
+            ("device-offline","anomaly", "low",      "lobby-light",  "Light flicker — driver undervoltage"),
+            # Fan events
+            ("integrity",     "anomaly", "high",     "lobby-fan",    "Fan speed command override — physical interlock suspected"),
+            ("integrity",     "anomaly", "medium",   "lobby-fan",    "Fan running at 100 % — thermal event possible"),
+            ("device-offline","anomaly", "low",      "lobby-fan",    "Fan speed oscillating — bearing wear indicator"),
+            # Sensor events
+            ("integrity",     "anomaly", "critical", "safety-sensor", "SMOKE DETECTED — safety sensor triggered"),
+            ("integrity",     "anomaly", "critical", "safety-sensor", "WATER LEAK — safety sensor triggered"),
+            ("device-offline","anomaly", "high",     "safety-sensor", "Sensor offline > 5 min — loss of safety coverage"),
+            ("integrity",     "anomaly", "medium",   "safety-sensor", "Sensor self-test failed — calibration required"),
+            # AC / room events (no device key)
+            ("integrity",     "anomaly", "high",     None, f"{_room()} AC setpoint changed remotely without operator session"),
+            ("integrity",     "anomaly", "medium",   None, f"{_room()} temperature deviation > 4 \u00b0C from setpoint"),
+            ("integrity",     "anomaly", "medium",   None, f"{_room()} AC unresponsive to last three commands"),
+            ("device-offline","anomaly", "low",      None, f"{_room()} AC filter maintenance alert"),
+        ]
+        # Pick exactly ONE detection event — summary counts one per _random_event call.
+        if random.random() < 0.45:
+            kind, sev, title = random.choice(network_pool)
+            src = _ip()
+            ev = rw.make_event(kind, sev, title, src=src)
+            self._detect(rw.topic("detect", kind), ev, now)
+            self._emit({"kind": kind, "sev": sev, "title": title, "node": "sentinel", "src": src})
+        else:
+            detect_kind, display_kind, sev, device, title = random.choice(iot_pool)
+            base_ev = {"kind": display_kind, "sev": sev, "node": "sentinel", "title": title}
+            if device:
+                base_ev["device"] = device
+            detect_ev = rw.make_event(detect_kind, sev, title, device=device or "")
+            self._detect(rw.topic("detect", detect_kind), detect_ev, now)
+            self._emit(base_ev)
 
     def snapshot(self) -> dict:
         now = time.time()
