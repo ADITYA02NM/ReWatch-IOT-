@@ -5,7 +5,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const BANDS = { GREEN: "#34d27b", BLUE: "#4c8dff", YELLOW: "#f2c230", RED: "#ff4a3d", PURPLE: "#b45cff" };
+  const BANDS = { GREEN: "#38bdf8", BLUE: "#4c8dff", YELLOW: "#f2c230", RED: "#ff4a3d", PURPLE: "#b45cff" };
 
   // ── state ───────────────────────────────────────────────────────────────
   const S = {
@@ -202,31 +202,32 @@
   // ── OLED twin + LED ─────────────────────────────────────────────────────
   function drawOled() {
     const cv = $("#oled"); if (!cv) return; const g = cv.getContext("2d");
-    g.fillStyle = "#04120a"; g.fillRect(0, 0, 128, 64);
+    g.fillStyle = "#040d1a"; g.fillRect(0, 0, 128, 64);
     const fresh = S.conn === "live" && S.mqtt;
-    g.fillStyle = "#39e08a";
+    const sigCol = BANDS[S.band] || "#38bdf8";
+    g.fillStyle = sigCol;
     if (!fresh) { oledText(g, "ReWatch", 2, 2); oledText(g, "link lost", 34, 30); drawZ(g); return; }
     g.font = "bold 8px monospace"; oledText(g, "ReWatch", 0, 1);
     g.fillRect(0, 10, 128, 1);
     const order = ["core", "sentinel", "herald", "rig"], lab = ["P4", "3A", "3B", "RG"];
     for (let i = 0; i < 4; i++) {
       const x = (i % 2) * 24, y = 13 + ((i / 2) | 0) * 15, up = isUp(order[i]);
-      if (up) { g.fillStyle = "#39e08a"; g.fillRect(x, y, 22, 13); g.fillStyle = "#04120a"; }
-      else { g.strokeStyle = "#39e08a"; g.strokeRect(x + .5, y + .5, 21, 12); g.fillStyle = "#39e08a"; }
+      if (up) { g.fillStyle = sigCol; g.fillRect(x, y, 22, 13); g.fillStyle = "#040d1a"; }
+      else { g.strokeStyle = sigCol; g.strokeRect(x + .5, y + .5, 21, 12); g.fillStyle = sigCol; }
       g.font = "8px monospace"; g.fillText(lab[i], x + 4, y + 10);
     }
-    g.fillStyle = "#39e08a"; g.font = "bold 26px monospace";
+    g.fillStyle = sigCol; g.font = "bold 26px monospace";
     g.fillText(String(Math.round(S.score)).padStart(3, " "), 56, 36);
     g.font = "8px monospace";
     const word = { RED: "ALERT", PURPLE: "LOCKDOWN", YELLOW: "DETECT", GREEN: "NORMAL", BLUE: "OFFLINE" }[S.band] || "OFFLINE";
     g.fillText(word, 56, 44);
-    drawEcg(g, S.band);
+    drawEcg(g, S.band, sigCol);
   }
   function oledText(g, t, x, y) { g.font = "8px monospace"; g.fillText(t, x, y + 8); }
   function drawZ(g) { g.font = "7px monospace"; g.fillText("z", 108, 20); g.fillText("z", 116, 14); }
-  function drawEcg(g, band) {
+  function drawEcg(g, band, sigCol) {
     const base = 59, pitch = { YELLOW: 128, RED: 64, PURPLE: 32 }[band] || 0;
-    g.strokeStyle = "#39e08a"; g.beginPath(); g.moveTo(0, base); g.lineTo(128, base); g.stroke();
+    g.strokeStyle = sigCol || "#38bdf8"; g.beginPath(); g.moveTo(0, base); g.lineTo(128, base); g.stroke();
     if (!pitch) return;
     const scroll = Math.floor(Date.now() / 60) % pitch;
     const knots = [[0, 0], [.08, 0], [.13, 3], [.18, 0], [.22, -2], [.25, 11], [.28, -4], [.32, 0], [.40, 0], [.47, 5], [.56, 0], [1, 0]];
@@ -245,7 +246,7 @@
     const lit = period === 0 ? true : (Math.floor(Date.now() / (period / 2)) & 1) === 1;
     i.style.background = lit ? col : "#111";
     i.style.boxShadow = lit ? "0 0 14px " + col : "none";
-    const words = { GREEN: "green · all clear", YELLOW: "yellow · 2 Hz", RED: "red · 4 Hz blink", PURPLE: "purple · 1 Hz", BLUE: "blue · no link" };
+    const words = { GREEN: "cyan · all clear", YELLOW: "yellow · 2 Hz", RED: "red · 4 Hz blink", PURPLE: "purple · 1 Hz", BLUE: "blue · no link" };
     w.textContent = words[fresh ? S.band : "BLUE"];
   }
 

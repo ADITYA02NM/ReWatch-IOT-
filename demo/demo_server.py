@@ -131,6 +131,15 @@ class Sim:
         self.generation = generation
         self.started_at = now
         # Restore device inventory — discovery-gated loops will keep refreshing it.
+        # Rooms reset to cold baseline (target/temp 20.0, power 'on') so rigBusy() is false
+        for dev, r in self.rooms.items():
+            if dev in saved_telemetry:
+                saved_telemetry[dev] = {
+                    **saved_telemetry[dev],
+                    "temp_c": round(r["temp"], 1),
+                    "setpoint": r["setpoint"],
+                    "power": "on",
+                }
         self.telemetry = saved_telemetry
         self.verify = saved_verify
         self.discovered = saved_discovered

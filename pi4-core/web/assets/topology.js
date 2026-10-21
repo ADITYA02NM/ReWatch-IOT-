@@ -4,7 +4,7 @@
 (() => {
   "use strict";
   const $ = (s) => document.querySelector(s);
-  const BANDS = { GREEN: "#34d27b", BLUE: "#4c8dff", YELLOW: "#f2c230", RED: "#ff4a3d", PURPLE: "#b45cff" };
+  const BANDS = { GREEN: "#38bdf8", BLUE: "#4c8dff", YELLOW: "#f2c230", RED: "#ff4a3d", PURPLE: "#b45cff" };
   const ICONS = { ac: "❄", thermostat: "◉", camera: "◈", door: "▥", plug: "ϟ", light: "☀", fan: "✣", sensor: "◇", generic: "□" };
   const KIND_ORDER = { ac: 0, thermostat: 1, camera: 2, door: 3, plug: 4, light: 5, fan: 6, sensor: 7, generic: 8 };
   let S = null, selected = null, blackBuilt = false, pulses = [], lidTimer = null, lastEventTs = 0;
@@ -107,7 +107,7 @@
       const up = !!(h && h.online && Date.now() / 1000 - Number(h.rx || 0) < 20);
       g.classList.toggle("down", !up);
       const led = g.querySelector(".bb-led");
-      if (led) led.setAttribute("fill", up ? "#34d27b" : "#ff4a3d");
+      if (led) led.setAttribute("fill", up ? (BANDS[S.band] || "#38bdf8") : "#ff4a3d");
       const detail = g.querySelector(`[data-detail="${b.id}"]`);
       if (!detail) continue;
       if (!h) detail.textContent = "no heartbeat";

@@ -80,8 +80,8 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 .dashboard .bb-lid.open{transform:translateY(-9px);fill:var(--red);stroke:var(--red)}
 .dashboard .bb-switch{fill:var(--bg-2);stroke:var(--line-2);stroke-width:1}
 .dashboard .bb-cable{fill:none;stroke:var(--line-2);stroke-width:1.4}
-.dashboard .bb-pulse{fill:var(--accent)}
-.dashboard .bb-oled{fill:#04120a;stroke:var(--green);stroke-width:1}
+.dashboard .bb-pulse{fill:var(--accent);transition:fill .4s}
+.dashboard .bb-oled{fill:#06101e;stroke:var(--signal, var(--blue));stroke-width:1}
 .dashboard .bb-label{fill:var(--text);font:600 9px var(--mono);letter-spacing:.06em}
 .dashboard .bb-sub{fill:var(--dim);font:8px var(--mono)}
 .dashboard .bb-detail{fill:var(--muted);font:8px var(--mono)}
@@ -90,16 +90,16 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 /* ── 04 iot connections (flowchart) ──────────────────────────────────────── */
 .dashboard .im-wrap{flex:1;min-height:0;display:flex}
 .dashboard .im-wrap svg{width:100%;height:100%;display:block}
-.dashboard .im-box{fill:var(--panel-2);stroke:var(--accent);stroke-width:1.2}
+.dashboard .im-box{fill:var(--panel-2);stroke:var(--accent);stroke-width:1.2;transition:stroke .4s}
 .dashboard .im-box-label{fill:var(--text);font:600 9px var(--mono);letter-spacing:.12em}
 .dashboard .im-box-sub{fill:var(--dim);font:7px var(--mono)}
 .dashboard .im-bus{stroke:var(--line-2);stroke-width:1.4}
 .dashboard .im-link{stroke:var(--line-2);stroke-width:1.2}
-.dashboard .im-link.up{stroke:var(--green);opacity:.7}
+.dashboard .im-link.up{stroke:var(--signal, var(--blue));opacity:.85;transition:stroke .4s ease}
 .dashboard .im-link.hot{stroke:var(--red);stroke-width:2}
 .dashboard .im-link.stale{stroke-dasharray:3 3}
 .dashboard .im-node rect{fill:var(--bg-2);stroke:var(--line-2);stroke-width:1.2;cursor:pointer}
-.dashboard .im-node.up rect{stroke:var(--green)}
+.dashboard .im-node.up rect{stroke:var(--signal, var(--blue));transition:stroke .4s ease}
 .dashboard .im-node.selected rect{stroke:var(--accent);stroke-width:2}
 .dashboard .im-node:hover rect,.dashboard .im-node:focus rect{stroke:var(--accent)}
 .dashboard .im-icon{fill:var(--text);font:12px var(--sans);pointer-events:none}
@@ -147,7 +147,7 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 .ac-room-temp{font:600 15px/1 var(--mono);color:var(--text);text-align:right}
 .ac-bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--bg);overflow:hidden;border:1px solid var(--line-2)}
 .ac-bar-fill{display:block;height:100%;border-radius:3px;transition:width .6s ease}
-.ac-bar-fill.ok{background:var(--ok,#34d27b)}
+.ac-bar-fill.ok{background:var(--ok,#38bdf8);transition:width .6s ease,background .4s ease}
 .ac-bar-fill.warm{background:var(--warn,#f2c230)}
 .ac-bar-fill.hot{background:var(--crit,#ff4a3d)}
 .ac-room-meta{grid-column:1/-1;font:9px var(--mono);color:var(--dim)}

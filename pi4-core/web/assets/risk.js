@@ -4,7 +4,7 @@
 (() => {
   "use strict";
   const $ = (s) => document.querySelector(s);
-  const BANDS = { GREEN: "#34d27b", BLUE: "#4c8dff", YELLOW: "#f2c230", RED: "#ff4a3d", PURPLE: "#b45cff" };
+  const BANDS = { GREEN: "#38bdf8", BLUE: "#4c8dff", YELLOW: "#f2c230", RED: "#ff4a3d", PURPLE: "#b45cff" };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const START = 270, SWEEP = 180;          // semicircle: left → top → right
   let S = null, arcs = {}, needle = null, tip = null, hover = null, built = false;
