@@ -109,6 +109,7 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 /* ── 05 controls ─────────────────────────────────────────────────────────── */
 .dashboard .btn-grid{flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
 .dashboard .btn-grid .btn{display:block;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#btn-blackhat[aria-pressed="true"]{background:var(--red,#ff4a3d);color:#fff;border-color:var(--red,#ff4a3d);box-shadow:0 0 10px rgba(255,74,61,.45)}
 .dashboard .oled-preview{flex:none;margin-top:8px;padding-top:7px;border-top:1px solid var(--line-2);display:flex;gap:10px;align-items:flex-start}
 .dashboard .oled-preview[hidden]{display:none}
 .dashboard .oled{padding:4px;flex:none}
@@ -142,7 +143,7 @@ body.dashboard main.grid{min-height:0;display:grid;grid-template-columns:repeat(
 .device-sub.ac-room{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto auto;gap:3px 6px;padding:6px 7px;border:1px solid var(--line-2);border-radius:6px;background:var(--bg-2);white-space:normal}
 .device-sub.ac-room:hover,.device-sub.ac-room:focus{background:var(--panel);outline:1px solid var(--accent)}
 .device-sub.ac-room.on{background:var(--panel);outline:1px solid var(--accent);color:var(--text)}
-.ac-room-name{font:10px var(--mono);letter-spacing:.06em;color:var(--muted);text-transform:uppercase;overflow:hidden;text-overflow:ellipsis}
+.ac-room-name{font:10px var(--mono);letter-spacing:.06em;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 .ac-room-temp{font:600 15px/1 var(--mono);color:var(--text);text-align:right}
 .ac-bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--bg);overflow:hidden;border:1px solid var(--line-2)}
 .ac-bar-fill{display:block;height:100%;border-radius:3px;transition:width .6s ease}

@@ -59,6 +59,7 @@
     S.mqtt = m.mqtt; S.simulation = m.simulation === true;
     if ($("#mail-status")) $("#mail-status").textContent = (m.mail_status || "Preview only") + " · System summaries every 5 minutes.";
     if (m.version) $("#f-ver").textContent = "ReWatch IoT · SIMULATION · " + m.version;
+    if (m.briefing != null) briefingState(m.briefing);
     if (m.state) applyState(m.state);
     renderEvents(); renderIncident(); renderAll();
   }
@@ -405,6 +406,24 @@
     $("#btn-oled").setAttribute("aria-expanded", String(open));
   });
   $("#lock-btn")?.addEventListener("click", async () => { await window.ReWatchAuth.logout(); location.reload(); });
+
+  // Ctrl+Shift+R or Cmd+Shift+R resets everything: score, color, incident, and logs
+  window.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "R" || e.key === "r")) {
+      e.preventDefault();
+      eventPage = 0;
+      S.events = [];
+      S.history = [];
+      S.score = 0;
+      S.band = "GREEN";
+      S.reason = "All quiet — reset requested.";
+      S.incident = null;
+      document.documentElement.setAttribute("data-band", "GREEN");
+      renderAll();
+      send({ op: "replay" });
+      toast("Reset everything: score, color, and logs cleared");
+    }
+  }, true);
 
   window.ReWatch = {
     start() {

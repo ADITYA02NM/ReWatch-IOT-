@@ -266,7 +266,13 @@ def main():
             expect(page.locator("#device-detail h3")).to_contain_text("Room 1")
             subs = page.locator(".device-sub")
             assert subs.count() == 4, "AC kind must list four room sub-devices: " + str(subs.count())
-            sub_names = [(s.inner_text() or "").split(" · ")[0] for s in subs.all()]
+            sub_names = []
+            for s in subs.all():
+                name_span = s.locator(".ac-room-name")
+                if name_span.count():
+                    sub_names.append(name_span.inner_text())
+                else:
+                    sub_names.append((s.inner_text() or "").split(" · ")[0])
             assert sub_names == ["Room 1", "Room 2", "Room 3", "Room 4"], repr(sub_names)
             page.locator('.device-sub[data-device="room3-ac"]').hover()
             summary = page.locator(".sub-detail").inner_text()

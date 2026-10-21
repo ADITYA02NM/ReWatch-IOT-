@@ -45,7 +45,8 @@ live = apply(live,
     '    S.mqtt = m.mqtt; if (m.version) $("#f-ver").textContent = "ReWatch IoT · v" + m.version;',
     """    S.mqtt = m.mqtt; S.simulation = m.simulation === true;
     if ($("#mail-status")) $("#mail-status").textContent = (m.mail_status || "Preview only") + " · System summaries every 5 minutes.";
-    if (m.version) $("#f-ver").textContent = "ReWatch IoT · SIMULATION · " + m.version;""")
+    if (m.version) $("#f-ver").textContent = "ReWatch IoT · SIMULATION · " + m.version;
+    if (m.briefing != null) briefingState(m.briefing);""")
 
 live = apply(live, "|| 120;", "|| 20;")
 live = apply(live,

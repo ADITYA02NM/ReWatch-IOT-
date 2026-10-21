@@ -101,7 +101,12 @@ class Sim:
         self.verify: dict = {}
         self.history: list = []
         self.recent: list = []
-        self.state: dict | None = None
+        self.state: dict | None = {
+            "band": "GREEN", "score": 0.0, "reason": "All quiet — nothing above noise.",
+            "contrib": [], "incident": None, "thresholds": {"yellow": 30, "red": 70},
+            "ts": time.time(),
+        }
+        self._briefing_overrides: dict[str, tuple[dict, float]] = {}
         self.briefing = False
         self.logged = 0
         self.pkts = 0
@@ -307,11 +312,17 @@ class Sim:
 
         for i, (dev, fields) in enumerate(self.extras.items() if self.discovered else []):
             tel = {**fields, "device": dev, "ip": f"192.168.100.{60+i}", "rx": now}
-            self.telemetry[dev] = tel
-            self.eng.on_message(rw.topic("iot", dev, "telemetry"), tel, now)
             cond = self.anom.feed(tel, now)
             if cond:
                 self._detect(rw.topic("detect", "anomaly", dev), cond, now)
+            if dev in self._briefing_overrides:
+                override, exp = self._briefing_overrides[dev]
+                if now < exp:
+                    tel.update(override)
+                else:
+                    self._briefing_overrides.pop(dev, None)
+            self.telemetry[dev] = tel
+            self.eng.on_message(rw.topic("iot", dev, "telemetry"), tel, now)
         for tel in self.telemetry.values():
             for ev in self.firmware.feed(tel, now):
                 self._detect(rw.topic("detect", ev["kind"]), ev, now)
@@ -429,7 +440,30 @@ class Sim:
             base_ev = {"kind": display_kind, "sev": sev, "node": "sentinel", "title": title}
             if device:
                 base_ev["device"] = device
-            detect_ev = rw.make_event(detect_kind, sev, title, device=device or "")
+                if device == "lobby-plug":
+                    self._briefing_overrides[device] = ({"power_w": random.randint(2200, 2600)}, now + 4.0)
+                elif device == "entry-door":
+                    self._briefing_overrides[device] = ({"forced_open": True}, now + 5.0)
+                elif device == "safety-sensor":
+                    key = "smoke" if "SMOKE" in title else "leak"
+                    self._briefing_overrides[device] = ({key: True}, now + 5.0)
+                elif device == "lobby-fan":
+                    self._briefing_overrides[device] = ({"speed": 100}, now + 4.5)
+                elif device == "lobby-light":
+                    val = 100 if "Lights on" in title else 15
+                    self._briefing_overrides[device] = ({"brightness": val}, now + 4.0)
+                elif device == "entry-camera":
+                    if "gap" in title or "rebooted" in title:
+                        self._briefing_overrides[device] = ({"recording": False}, now + 4.5)
+            else:
+                for dev, label in ROOMS.items():
+                    if label in title:
+                        base_ev["device"] = dev
+                        r = self.rooms.get(dev)
+                        if r and not r.get("spiked"):
+                            r["temp"] = min(32.0, r["temp"] + random.uniform(2.5, 4.0))
+                        break
+            detect_ev = rw.make_event(detect_kind, sev, title, device=base_ev.get("device", ""))
             self._detect(rw.topic("detect", detect_kind), detect_ev, now)
             self._emit(base_ev)
 
