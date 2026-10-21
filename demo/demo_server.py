@@ -526,7 +526,7 @@ async def page(request):
 
 async def asset(request):
     tail = request.match_info["tail"]
-    if tail in ("devices.js", "devices.css", "risk.js", "topology.js"):
+    if tail in ("devices.js", "devices.css", "risk.js", "topology.js", "rewatch.css"):
         return web.FileResponse(ROOT / "pi4-core" / "web" / "assets" / tail)
     target = (WEB / "assets" / tail).resolve()
     if (WEB / "assets").resolve() not in target.parents or not target.is_file():

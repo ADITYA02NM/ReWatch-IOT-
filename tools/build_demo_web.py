@@ -99,4 +99,5 @@ index = apply(index,
       <p id="ctl-note" role="status">Buttons act on the running simulation; nothing here deletes stored evidence.</p>""")
 
 (DEMO_WEB / "index.html").write_text(index, encoding="utf-8")
+(DEMO_WEB / "assets" / "rewatch.css").write_bytes((PROD_ASSETS / "rewatch.css").read_bytes())
 print("demo front-end regenerated")
