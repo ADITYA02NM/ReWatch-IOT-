@@ -24,7 +24,7 @@ safety controller or a guarantee of intrusion prevention.
 > wireless verification and real SMTP delivery still require physical checks.
 > All repository hardware artwork is labelled illustration, not photography.
 
-**Start here:** [Laptop demo](#laptop-demo) · [Hardware](hardware.md) ·
+**Start here:** [Full installation guide](install.md) · [Laptop demo](#laptop-demo) · [Hardware](hardware.md) ·
 [Firmware](firmware/README.md) · [Story](story.md) · [Security](SECURITY.md) ·
 [Verification record](docs/BUILD-CHECKLIST.md)
 
