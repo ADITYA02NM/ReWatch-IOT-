@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1140" height="860" viewBox="0 0 1140 860" role="img" aria-labelledby="title desc">
-  <title id="title">ReWatch device illustration and future photo slots</title>
-  <desc id="desc">Nine labeled schematic placeholders: Pi 4 Core, Pi 3 Sentinel, Pi 3 Herald, switch or router, USB drive, AC600, WN722N, C3 with OLED and pixel, and WROOM rig. No actual hardware photographs or validation evidence.</desc>
+  <title id="title">ReWatch(Iot) hardware component reference</title>
+  <desc id="desc">Schematic reference for a reproducible open-source enclosure: Pi 4 Core, Pi 3 Sentinel, Pi 3 Herald, switch or router, USB storage, AC600 verification adapter, WN722N mail adapter, C3 indicator and WROOM Black Hat room model.</desc>
   <rect width="1140" height="860" rx="20" fill="#0b1320"/>
   <g font-family="sans-serif" fill="#e8eef7">
-    <text x="30" y="42" font-size="26" font-weight="bold">Hardware inventory / future photo slots</text>
-    <text x="30" y="72" font-size="15" fill="#f5c96b">SCHEMATIC PLACEHOLDERS · NOT PHOTOGRAPHS · NOT HARDWARE VALIDATION</text>
+    <text x="30" y="42" font-size="26" font-weight="bold">ReWatch(Iot) / hardware component reference</text>
+    <text x="30" y="72" font-size="15" fill="#a5b9d0">OPEN SOURCE · REPRODUCE WITH THE DOCUMENTED HARDWARE AND SETUP</text>
     <g fill="#14263a" stroke="#405f7a">
       <rect x="30" y="100" width="340" height="225" rx="12"/><rect x="400" y="100" width="340" height="225" rx="12"/><rect x="770" y="100" width="340" height="225" rx="12"/>
       <rect x="30" y="345" width="340" height="225" rx="12"/><rect x="400" y="345" width="340" height="225" rx="12"/><rect x="770" y="345" width="340" height="225" rx="12"/>
@@ -23,16 +23,16 @@
     </g>
     <g fill="#68d9ba"><rect x="125" y="410" width="20" height="18"/><rect x="155" y="410" width="20" height="18"/><rect x="185" y="410" width="20" height="18"/><rect x="215" y="410" width="20" height="18"/><rect x="245" y="410" width="20" height="18"/><circle cx="512" cy="690" r="6"/></g>
     <g text-anchor="middle">
-      <text x="200" y="244" font-size="20">Pi 4 Core</text><text x="200" y="271" font-size="14">USB indicator · Ethernet</text><text x="200" y="301" font-size="13" fill="#a5b9d0">pi4-core-photo.jpg</text>
-      <text x="570" y="244" font-size="20">Pi 3 Sentinel</text><text x="570" y="271" font-size="14">Capture · storage</text><text x="570" y="301" font-size="13" fill="#a5b9d0">pi3-sentinel-photo.jpg</text>
-      <text x="940" y="244" font-size="20">Pi 3 Herald</text><text x="940" y="271" font-size="14">Alert node</text><text x="940" y="301" font-size="13" fill="#a5b9d0">pi3-herald-photo.jpg</text>
-      <text x="200" y="489" font-size="20">Switch / router</text><text x="200" y="516" font-size="14">Verify mirror/SPAN or TAP path</text><text x="200" y="546" font-size="13" fill="#a5b9d0">switch-router-photo.jpg</text>
-      <text x="570" y="489" font-size="20">USB drive</text><text x="570" y="516" font-size="14">Verify mount and power</text><text x="570" y="546" font-size="13" fill="#a5b9d0">usb-drive-photo.jpg</text>
-      <text x="940" y="489" font-size="20">AC600 adapter</text><text x="940" y="516" font-size="14">Record exact chipset / revision</text><text x="940" y="546" font-size="13" fill="#a5b9d0">ac600-photo.jpg</text>
-      <text x="200" y="734" font-size="20">TL-WN722N</text><text x="200" y="761" font-size="14">Record hardware revision / driver</text><text x="200" y="791" font-size="13" fill="#a5b9d0">wn722n-photo.jpg</text>
-      <text x="570" y="734" font-size="20">C3 + OLED + pixel</text><text x="570" y="761" font-size="14">SDA 5 · SCL 6 · pixel 8</text><text x="570" y="791" font-size="13" fill="#a5b9d0">c3-oled-pixel-photo.jpg</text>
-      <text x="940" y="734" font-size="20">ESP32-WROOM rig</text><text x="940" y="761" font-size="14">Synthetic rooms · not mains control</text><text x="940" y="791" font-size="13" fill="#a5b9d0">wroom-rig-photo.jpg</text>
+      <text x="200" y="244" font-size="20">Pi 4 Core</text><text x="200" y="271" font-size="14">Broker · score · dashboard</text><text x="200" y="301" font-size="13" fill="#a5b9d0">Local decisions and operator controls</text>
+      <text x="570" y="244" font-size="20">Pi 3 Sentinel</text><text x="570" y="271" font-size="14">Capture · storage</text><text x="570" y="301" font-size="13" fill="#a5b9d0">Network observations and JSONL evidence</text>
+      <text x="940" y="244" font-size="20">Pi 3 Herald</text><text x="940" y="271" font-size="14">Alert node</text><text x="940" y="301" font-size="13" fill="#a5b9d0">SMTP notifications over configured uplink</text>
+      <text x="200" y="489" font-size="20">Switch / router</text><text x="200" y="516" font-size="14">Verify mirror/SPAN or TAP path</text><text x="200" y="546" font-size="13" fill="#a5b9d0">Authorized LAN observation path</text>
+      <text x="570" y="489" font-size="20">USB drive</text><text x="570" y="516" font-size="14">Verify mount and power</text><text x="570" y="546" font-size="13" fill="#a5b9d0">Evidence retention and export</text>
+      <text x="940" y="489" font-size="20">AC600 adapter</text><text x="940" y="516" font-size="14">Record exact chipset / revision</text><text x="940" y="546" font-size="13" fill="#a5b9d0">Core HTTP temperature verification</text>
+      <text x="200" y="734" font-size="20">TL-WN722N</text><text x="200" y="761" font-size="14">Record hardware revision / driver</text><text x="200" y="791" font-size="13" fill="#a5b9d0">Herald SMTP network route</text>
+      <text x="570" y="734" font-size="20">C3 + OLED + pixel</text><text x="570" y="761" font-size="14">SDA 5 · SCL 6 · pixel 8</text><text x="570" y="791" font-size="13" fill="#a5b9d0">Enclosed indicator · MQTT or Core serial</text>
+      <text x="940" y="734" font-size="20">ESP32-WROOM rig</text><text x="940" y="761" font-size="14">Modeled rooms · not mains control</text><text x="940" y="791" font-size="13" fill="#a5b9d0">Black Hat · four-room AC model</text>
     </g>
-    <text x="30" y="842" font-size="13" fill="#a5b9d0">Filenames reserve future evidence only. Shapes are conceptual, not board layouts or electrical schematics.</text>
+    <text x="30" y="842" font-size="13" fill="#a5b9d0">Component schematic; verify actual revisions and pinouts. Shapes are not board layouts or electrical schematics.</text>
   </g>
 </svg>

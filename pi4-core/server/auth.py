@@ -1,4 +1,4 @@
-"""ReWatch WebAuthn authentication routes (Pi4 — core).
+"""ReWatch(Iot) WebAuthn authentication routes (Pi4 — core).
 
 Single-owner passkey authentication. No passwords, no biometrics stored.
 py_webauthn handles all cryptographic verification.
@@ -215,7 +215,7 @@ async def handle_setup(request: web.Request) -> web.Response:
         rp_name=rp_name,
         user_id=b"rewatch-owner",
         user_name="owner",
-        user_display_name="ReWatch Owner",
+        user_display_name="ReWatch(Iot) Owner",
         authenticator_selection=AuthenticatorSelectionCriteria(
             resident_key=ResidentKeyRequirement.PREFERRED,
             user_verification=UserVerificationRequirement.REQUIRED,
@@ -298,7 +298,7 @@ async def handle_register_begin(request: web.Request) -> web.Response:
         rp_name=_get_rp_name(request),
         user_id=b"rewatch-owner",
         user_name="owner",
-        user_display_name="ReWatch Owner",
+        user_display_name="ReWatch(Iot) Owner",
         authenticator_selection=AuthenticatorSelectionCriteria(
             resident_key=ResidentKeyRequirement.PREFERRED,
             user_verification=UserVerificationRequirement.REQUIRED,

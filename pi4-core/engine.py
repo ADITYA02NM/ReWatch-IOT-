@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ReWatch threat engine + responder — Raspberry Pi 4 (8 GB) on switch port 3.
+"""ReWatch(Iot) threat engine + responder — Raspberry Pi 4 (8 GB) on switch port 3.
 
 The score model
 ---------------
@@ -350,7 +350,7 @@ class ThreatEngine:
                 return f"request {room} setpoint {self.baseline:.0f} °C (not confirmed)"
             return f"escalate {room} for operator review; no automatic actuator command"
         if inc.src:
-            return f"block {inc.src} on the ReWatch firewall"
+            return f"block {inc.src} on the ReWatch(Iot) firewall"
         return "escalate"
 
     def _emit_incident(self, inc: Incident) -> None:

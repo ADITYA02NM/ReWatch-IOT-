@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the demo front-end from the shared production front-end.
+"""Build the Black Hat workspace from the shared live front-end.
 
-The demo serves risk.js / topology.js / devices.js / devices.css straight from
+The workspace serves risk.js / topology.js / devices.js / devices.css straight from
 pi4-core/web/assets, but it keeps its own index.html and live.js because the
-simulation adds replay, the synthetic Black Hat feed and a 20 second ACK
+Black Hat adds replay, a generated detection feed and a 20 second ACK
 deadline. This script regenerates those two files so the two front-ends cannot
 drift apart silently.
 """
@@ -42,16 +42,16 @@ live = apply(live,
       else if (m.t === "demo") briefingState(m.briefing);""")
 
 live = apply(live,
-    '    S.mqtt = m.mqtt; if (m.version) $("#f-ver").textContent = "ReWatch IoT · v" + m.version;',
+    '    S.mqtt = m.mqtt; if (m.version) $("#f-ver").textContent = "ReWatch(Iot) · v" + m.version;',
     """    S.mqtt = m.mqtt; S.simulation = m.simulation === true;
     if ($("#mail-status")) $("#mail-status").textContent = (m.mail_status || "Preview only") + " · System summaries every 5 minutes.";
-    if (m.version) $("#f-ver").textContent = "ReWatch IoT · SIMULATION · " + m.version;
+    if (m.version) $("#f-ver").textContent = "ReWatch(Iot) · BLACK HAT";
     if (m.briefing != null) briefingState(m.briefing);""")
 
 live = apply(live, "|| 120;", "|| 20;")
 live = apply(live,
     "a RED crossing opens one here with a countdown.",
-    "In this simulation, RED opens an incident with a 20-second countdown. Production defaults to 120 seconds.")
+    "In Black Hat, RED opens an incident with a 20-second countdown. The live stack defaults to 120 seconds.")
 
 live = apply(live,
     '    const fresh = S.conn === "live" && S.mqtt;',
@@ -82,7 +82,7 @@ index = (ROOT / "pi4-core" / "web" / "index.html").read_text(encoding="utf-8")
 
 index = apply(index,
     "<span>Owner-only passkey</span><span>Zero cloud</span><span>2 × Pi 3 · Pi 4 · 2 × ESP32</span><span>Real hardware alerts</span>",
-    "<span>Local recording demo</span><span>Synthetic IoT evidence</span><span>2 × Pi 3 · Pi 4 · 2 × ESP32 design</span><span>Nothing leaves this machine</span>")
+    "<span>Black Hat workspace</span><span>Generated scenario data</span><span>Open-source hardware architecture</span><span>Mail is configurable</span>")
 
 index = apply(index,
     '        <a class="btn" href="reports.html" title="Open the 5-hour evidence report">▤ Evidence · 5h</a>\n      </div>',
@@ -95,9 +95,10 @@ index = apply(index,
 index = apply(index,
     '      <p id="ctl-note" role="status">Buttons act on the live system; nothing here deletes stored evidence.</p>',
     """      <p id="mail-status" role="status">E-mail preview only · system summaries every 5 min.</p>
-      <p id="c-note">SIMULATION · discovery 20 s → spike 30 s → ACK 20 s. Refresh reconnects; Replay restarts the scene.</p>
-      <p id="ctl-note" role="status">Buttons act on the running simulation; nothing here deletes stored evidence.</p>""")
+      <p id="c-note">BLACK HAT · generated data · discovery 20 s → spike 30 s → ACK 20 s. Refresh reconnects; Replay restarts the scene.</p>
+      <p id="ctl-note" role="status">Buttons act on the Black Hat scene; nothing here deletes stored evidence.</p>""")
 
 (DEMO_WEB / "index.html").write_text(index, encoding="utf-8")
 (DEMO_WEB / "assets" / "rewatch.css").write_bytes((PROD_ASSETS / "rewatch.css").read_bytes())
-print("demo front-end regenerated")
+(DEMO_WEB / "manual.html").write_bytes((ROOT / "pi4-core/web/manual.html").read_bytes())
+print("Black Hat front-end regenerated")

@@ -20,4 +20,4 @@ class IndicatorFrameTests(unittest.TestCase):
         frame = make_frame({})
         self.assertEqual(frame["band"], "GREEN")
         self.assertEqual(frame["cd"], -1)
-        self.assertIn("DEMO", frame["msg"])
+        self.assertIn("BLACK HAT", frame["msg"])

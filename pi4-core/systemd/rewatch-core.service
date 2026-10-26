@@ -1,5 +1,5 @@
 [Unit]
-Description=ReWatch threat engine + responder (Pi 4 core)
+Description=ReWatch(Iot) threat engine + responder (Pi 4 core)
 After=network-online.target mosquitto.service
 Wants=network-online.target
 [Service]

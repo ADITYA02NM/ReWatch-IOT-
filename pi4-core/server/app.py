@@ -1,4 +1,4 @@
-"""ReWatch dashboard server — runs on the Pi 4 next to the threat engine.
+"""ReWatch(Iot) dashboard server — runs on the Pi 4 next to the threat engine.
 
   GET  /                 dashboard (lock screen until a passkey unlocks it)
   GET  /reports.html     everything that happened in the last 5 hours
@@ -460,7 +460,7 @@ def build_app() -> web.Application:
     host = rw.env("REWATCH_HOSTNAME", "rewatch.local")
     port = rw.env_int("REWATCH_PORT", 443 if tls else 8080)
     app["auth_rp_id"] = rw.env("REWATCH_RP_ID", host)
-    app["auth_rp_name"] = "ReWatch IoT"
+    app["auth_rp_name"] = "ReWatch(Iot)"
     scheme = "https" if tls else "http"
     default_origins = [f"{scheme}://{host}" + ("" if port in (80, 443) else f":{port}"),
                        f"http://localhost:{port}", f"https://localhost:{port}"]

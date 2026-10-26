@@ -1,12 +1,12 @@
 # Third-party notices
 
-ReWatch's own source is Apache-2.0-licensed — see [`LICENSE`](LICENSE) and
+ReWatch(Iot)'s own source is Apache-2.0-licensed — see [`LICENSE`](LICENSE) and
 [`NOTICE`](NOTICE).
 
 It also **bundles and depends on software that is not ours**. Those licences are
 listed here because several of them require the notice to travel with the code.
 
-**If you redistribute ReWatch — a built dashboard, a disk image, a booth SD card,
+**If you redistribute ReWatch(Iot) — a built dashboard, a disk image, a booth SD card,
 a tarball — this file must travel with it.** It is not decoration; the SIL Open
 Font License in §1 is only satisfied if the licence text and copyright notice
 accompany the font files.
@@ -19,7 +19,7 @@ redistributing can check it.
 ## 1. Font Software — SIL Open Font License 1.1
 
 The dashboard self-hosts Newsreader, Schibsted Grotesk and JetBrains Mono under
-`pi4-core/web/assets/fonts/`, also copied into the standalone demo. The IBM Plex
+`pi4-core/web/assets/fonts/`, also copied into the Black Hat workspace. The IBM Plex
 notice below is retained from earlier work; no IBM Plex binary is currently
 served. There is no font CDN or font build step in this repository.
 
@@ -194,7 +194,7 @@ Pinned in `requirements-dev.txt`. **Not present on a deployed Pi.**
 | ruff | 0.17.1 | MIT |
 | playwright | 1.64.0 | Apache-2.0 |
 
-`paho-mqtt` is dual-licensed; ReWatch uses the BSD-3-Clause option. WebAuthn also
+`paho-mqtt` is dual-licensed; ReWatch(Iot) uses the BSD-3-Clause option. WebAuthn also
 installs transitive packages such as `cbor2` (MIT) and `cryptography`
 (Apache-2.0 OR BSD-3-Clause). Retain their installed license notices when
 redistributing an environment. Scapy is imported by Sentinel: review its GPL
@@ -215,18 +215,18 @@ redistributing binaries. Build directories and downloaded sources are ignored.
 
 ---
 
-## 5. Programs ReWatch invokes but does not link, modify or redistribute
+## 5. Programs ReWatch(Iot) invokes but does not link, modify or redistribute
 
-This is the licensing boundary that matters most for ReWatch, and it is deliberate.
+This is the licensing boundary that matters most for ReWatch(Iot), and it is deliberate.
 
-| Program | Licence | How ReWatch uses it |
+| Program | Licence | How ReWatch(Iot) uses it |
 |---------|---------|--------------------|
-| **Mosquitto** | EPL-2.0 | Its own daemon; ReWatch is an MQTT *client* over TCP:1883. |
-| **nftables / nft** | GPL-2.0 | Its own binary; ReWatch applies rules through `nft` and the kernel. |
+| **Mosquitto** | EPL-2.0 | Its own daemon; ReWatch(Iot) is an MQTT *client* over TCP:1883. |
+| **nftables / nft** | GPL-2.0 | Its own binary; ReWatch(Iot) applies rules through `nft` and the kernel. |
 
-ReWatch does not link against these, does not patch them, and does not ship them
+ReWatch(Iot) does not link against these, does not patch them, and does not ship them
 in this repository. It talks to them across a process boundary or a socket. As a
-consequence **their licences do not reach ReWatch's own source**, and ReWatch's
+consequence **their licences do not reach ReWatch(Iot)'s own source**, and ReWatch(Iot)'s
 Apache-2.0 licence does not reach them.
 
 The practical consequences, which are worth knowing before you build a booth image:
@@ -244,7 +244,7 @@ The practical consequences, which are worth knowing before you build a booth ima
 
 ## 6. Deliberately absent
 
-ReWatch has **no runtime JavaScript package dependency**. The dashboard has no
+ReWatch(Iot) has **no runtime JavaScript package dependency**. The dashboard has no
 CDN `<script>`, no font CDN, no analytics, no telemetry. That is a security
 property before it is a licensing one — see the CSP notes in
 [`SECURITY.md`](SECURITY.md) — but it also means the browser-side third-party

@@ -1,4 +1,4 @@
-"""ReWatch passkey enrolment helper (run on the Pi 4).
+"""ReWatch(Iot) passkey enrolment helper (run on the Pi 4).
 
   sudo /opt/rewatch/venv/bin/python -m server.enroll            # one-time code, 10 min
   sudo /opt/rewatch/venv/bin/python -m server.enroll --list     # registered passkeys

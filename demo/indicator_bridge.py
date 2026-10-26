@@ -22,7 +22,7 @@ def make_frame(snapshot: dict) -> dict:
     nodes = snapshot.get("nodes") or {}
     return {"score": round(state.get("score", 0)), "band": state.get("band", "GREEN"),
             "open": int(opened), "cd": int(incident.get("remaining", -1)) if opened else -1,
-            "msg": (state.get("reason") or "DEMO: discovering ACs")[:40],
+            "msg": (state.get("reason") or "BLACK HAT: discovering ACs")[:40],
             "nodes": "".join("1" if nodes.get(n, {}).get("online") else "0"
                              for n in ("core", "sentinel", "herald", "rig"))}
 
@@ -42,14 +42,14 @@ def main():
     with serial.Serial(args.port, 115200, timeout=0.1, write_timeout=1) as link:
         link.dtr = False
         link.rts = False
-        print(f"Demo → C3 on {args.port}; Ctrl+C stops mirroring.", flush=True)
+        print(f"Black Hat → C3 on {args.port}; Ctrl+C stops mirroring.", flush=True)
         while True:
             try:
                 with opener.open(base + "/api/state", timeout=2) as response:
                     frame = make_frame(json.load(response))
             except (HTTPError, URLError, TimeoutError):
                 frame = {"score": 0, "band": "BLUE", "open": 0, "cd": -1,
-                         "msg": "demo server unavailable", "nodes": "0000"}
+                         "msg": "Black Hat server unavailable", "nodes": "0000"}
             link.write((json.dumps(frame, separators=(",", ":")) + "\n").encode())
             time.sleep(0.2)
 

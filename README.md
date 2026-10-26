@@ -1,12 +1,12 @@
-<p align="center"><img src="assets/banner.svg" alt="ReWatch IoT — observe, assess, alert, respond"></p>
+<p align="center"><img src="assets/banner.svg" alt="ReWatch(Iot) — observe, assess, alert, respond"></p>
 
-<h1 align="center">ReWatch IoT</h1>
+<h1 align="center">ReWatch(Iot)</h1>
 <p align="center"><b>Open-source IoT monitoring. Local decisions. An operator in the loop.</b></p>
 <p align="center"><a href="install.md">Installation</a> · <a href="hardware.md">Hardware</a> · <a href="https://youtube.com">▶ Video Demo</a> · <a href="SECURITY.md">Security</a></p>
 
 ## Overview
 
-ReWatch combines network observations and device telemetry into a shared risk
+ReWatch(Iot) combines network observations and device telemetry into a shared risk
 score, incident alerts and capability-approved controls. Reproduce it with the
 documented hardware, or explore generated scenarios in the separate **Black Hat
 workspace**.
@@ -17,7 +17,7 @@ provides an OLED/LED status display.
 
 ## Workflow
 
-![ReWatch workflow: authorized observations reach Core, which updates the dashboard and indicator; RED incidents notify Herald and await acknowledgement or a configured response.](assets/workflow.svg)
+![ReWatch(Iot) workflow: authorized observations reach Core, which updates the dashboard and indicator; RED incidents notify Herald and await acknowledgement or a configured response.](assets/workflow.svg)
 
 1. **Observe:** collect authorized network events and device telemetry.
 2. **Assess:** Core calculates risk and opens an incident when needed.
@@ -88,6 +88,6 @@ collectors**, separately from Black Hat exercises.
 Use only on systems you are authorized to monitor. The default MQTT broker is
 anonymous and unencrypted: isolate the network and do not expose it publicly.
 Responses are requests, not proof of physical actuation; SMTP acceptance is not
-proof of delivery. ReWatch is not a certified safety controller.
+proof of delivery. ReWatch(Iot) is not a certified safety controller.
 
 **[Apache-2.0](LICENSE)** · [Notice](NOTICE). Contributions and reproducible bug reports are welcome.

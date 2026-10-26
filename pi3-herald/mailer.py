@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ReWatch Herald — Raspberry Pi 3 on switch port 4 + TP-Link TL-WN722N.
+"""ReWatch(Iot) Herald — Raspberry Pi 3 on switch port 4 + TP-Link TL-WN722N.
 
 Herald is the messenger. It listens for incidents and e-mails the owner over
 SMTP, sending *out of the TL-WN722N Wi-Fi interface* (source-bound to its
@@ -7,9 +7,9 @@ address), so an alert still leaves the house if the wired uplink is the thing
 under attack.
 
 Mails it sends
-  RED     "Your ReWatch system is RED" + 2-minute warning + Acknowledge link
+  RED     "Your ReWatch(Iot) system is RED" + 2-minute warning + Acknowledge link
   ACKED   confirmation that somebody took ownership
-  PURPLE  "no response — ReWatch acted automatically: <what it did>"
+  PURPLE  "no response — ReWatch(Iot) acted automatically: <what it did>"
   RESOLVED back to normal
   TEST    on rewatch/mail/test (dashboard "Send test e-mail" button)
 
@@ -55,15 +55,15 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
                 if seconds % 60 == 0 else f"{seconds} second{'s' if seconds != 1 else ''}")
     if kind == "alert":
         band = "RED"
-        subject = f"[ReWatch] RED — {title}"
+        subject = f"[ReWatch(Iot)] RED — {title}"
         lines = [
-            "Your ReWatch system is RED.",
+            "Your ReWatch(Iot) system is RED.",
             "",
             f"What happened : {title}",
             f"When         : {_fmt(d.get('ts'))}",
             f"Risk score   : {d.get('score', '?')}/100",
             "",
-            f"If you don't do anything in {duration}, ReWatch will "
+            f"If you don't do anything in {duration}, ReWatch(Iot) will "
             f"automatically take action: {d.get('planned_action') or 'escalate'}.",
             "",
             "Or go back to your system dashboard and click Acknowledge:",
@@ -71,26 +71,26 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
         ]
     elif kind == "acked":
         band = "RED"
-        subject = f"[ReWatch] Acknowledged — {title}"
+        subject = f"[ReWatch(Iot)] Acknowledged — {title}"
         lines = [f"Incident {inc} was acknowledged by {d.get('acked_by') or 'the operator'} "
                  f"at {_fmt(d.get('acked_ts'))}.", "", "The automatic response is cancelled.",
                  "Dashboard: " + link]
     elif kind == "auto":
         band = "PURPLE"
         action = (d.get("action") or {}).get("summary", "automated response")
-        subject = "[ReWatch] PURPLE — no response, automatic action taken"
+        subject = "[ReWatch(Iot)] PURPLE — no response, automatic action taken"
         lines = ["Nobody acknowledged the alert in time, so it was treated as unauthorised.",
                  "", f"Incident     : {title}", f"Action taken : {action}",
                  f"At           : {_fmt((d.get('action') or {}).get('ts'))}", "",
                  "Dashboard: " + link]
     elif kind == "resolved":
         band = "GREEN"
-        subject = f"[ReWatch] Resolved — {title}"
+        subject = f"[ReWatch(Iot)] Resolved — {title}"
         lines = [f"Incident {inc} is resolved. Everything is back to normal.", "",
                  "The last 5 hours: " + dash.rstrip("/") + "/reports.html"]
     elif kind == "summary":
         band = d.get("band", "BLUE")
-        subject = f"[ReWatch] 5-minute system summary — {band}"
+        subject = f"[ReWatch(Iot)] 5-minute system summary — {band}"
         lines = ["System summary for the preceding five-minute window.",
                  f"Window       : {_fmt(d.get('from'))} – {_fmt(d.get('to'))}",
                  f"State fresh  : {d.get('state_received', False)}",
@@ -107,11 +107,11 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
             lines.insert(0, "SIMULATION — not physical network evidence.")
     else:
         band = "GREEN"
-        subject = "[ReWatch] Test e-mail"
-        lines = ["This is a test from ReWatch Herald.",
+        subject = "[ReWatch(Iot)] Test e-mail"
+        lines = ["This is a test from ReWatch(Iot) Herald.",
                  f"Sent at {_fmt(None)} via {d.get('via', 'SMTP')}.", "", "Dashboard: " + dash]
 
-    text = "\n".join(lines) + "\n\n— ReWatch IoT\n"
+    text = "\n".join(lines) + "\n\n— ReWatch(Iot)\n"
     colour = BAND_HEX.get(band, "#333")
     body_html = "<br>".join(html.escape(x) if not x.startswith("http")
                             else f'<a href="{html.escape(x)}">{html.escape(x)}</a>' for x in lines)
@@ -121,9 +121,9 @@ def compose(kind: str, d: dict, dash: str) -> tuple[str, str, str]:
               if kind == "alert" else "")
     page = (f'<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px">'
             f'<div style="border-left:6px solid {colour};padding:4px 16px">'
-            f'<h2 style="margin:6px 0;color:{colour}">ReWatch · {band}</h2>'
+            f'<h2 style="margin:6px 0;color:{colour}">ReWatch(Iot) · {band}</h2>'
             f'<p style="font-size:15px;line-height:1.5">{body_html}</p>{button}</div>'
-            f'<p style="color:#888;font-size:12px">ReWatch IoT · sent by Herald</p></div>')
+            f'<p style="color:#888;font-size:12px">ReWatch(Iot) · sent by Herald</p></div>')
     return subject, text, page
 
 

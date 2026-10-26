@@ -2,7 +2,7 @@
 
 [Watch or download the recording](black-hat-walkthrough.mp4).
 
-Recorded on 21 October 2026. This walkthrough shows the ReWatch Black Hat
+Recorded on 21 October 2026. This walkthrough shows the ReWatch(Iot) Black Hat
 workspace and generated office scenarios, not evidence of a validated physical
 deployment. Its interface predates the latest presentation updates.
 

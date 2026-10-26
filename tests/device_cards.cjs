@@ -72,7 +72,7 @@ for (const [kind, values] of Object.entries(readings)) {
 }
 context.window.ReWatchDevices.update({ telemetry, verify: {}, simulation: true, conn: 'live' });
 await new Promise(setImmediate); // Let the real async policy refresh finish.
-assert.match(status.textContent, /SIMULATION/);
+assert.match(status.textContent, /BLACK HAT/);
 const picker = context.document.querySelector('#control-target');
 assert.equal(picker.children.length, 28);
 assert.equal(new Set(picker.children.map((option) => option.textContent)).size, 28);

@@ -88,7 +88,7 @@
       const response = await fetch("/api/devices", { credentials: "same-origin", cache: "no-store" });
       if (!response.ok) throw new Error("Device policy unavailable");
       const body = await response.json(); inventory = body.devices || [];
-      $("#device-status").textContent = body.simulation ? "SIMULATION · controls affect this laptop only" : "MQTT bridge · requested ≠ confirmed";
+      $("#device-status").textContent = body.simulation ? "BLACK HAT · generated scene controls" : "MQTT bridge · requested ≠ confirmed";
     } catch {
       inventory = []; // fail closed, including already selected controls
       $("#device-status").textContent = "Policy unavailable — controls disabled";
@@ -266,7 +266,7 @@
             body: JSON.stringify({ device: row.device, action, value, confirmed }) });
           if (response.status !== 202) throw new Error("Command rejected");
           const body = await response.json();
-          status.textContent = (body.simulation ? "SIMULATED · " : "") + "Requested; verify observed state.";
+          status.textContent = (body.simulation ? "BLACK HAT · generated · " : "") + "Requested; verify observed state.";
         } catch { status.textContent = "Failed — no action confirmed. Check connection / policy."; }
         finally { button.disabled = !fresh(row) || state.conn !== "live"; }
       });

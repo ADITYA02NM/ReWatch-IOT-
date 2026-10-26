@@ -1,5 +1,5 @@
 [Unit]
-Description=ReWatch Sentinel — detection + USB logging (Pi 3)
+Description=ReWatch(Iot) Sentinel — detection + USB logging (Pi 3)
 After=network-online.target mosquitto.service
 Wants=network-online.target
 [Service]

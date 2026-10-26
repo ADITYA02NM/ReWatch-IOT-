@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-only demonstration. No SSH, MQTT broker, root, or hardware required.
+# Local Black Hat workspace. No SSH, MQTT broker, root, or hardware required.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$HERE")"

@@ -1,5 +1,5 @@
 [Unit]
-Description=ReWatch indicator bridge -> ESP32-C3 (Pi 4 core, USB serial)
+Description=ReWatch(Iot) indicator bridge -> ESP32-C3 (Pi 4 core, USB serial)
 After=mosquitto.service
 [Service]
 Type=simple

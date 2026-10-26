@@ -1,5 +1,5 @@
 [Unit]
-Description=ReWatch Herald — SMTP alerts (Pi 3, TL-WN722N)
+Description=ReWatch(Iot) Herald — SMTP alerts (Pi 3, TL-WN722N)
 After=network-online.target mosquitto.service
 Wants=network-online.target
 [Service]

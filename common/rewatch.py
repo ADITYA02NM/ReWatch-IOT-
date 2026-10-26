@@ -1,4 +1,4 @@
-"""ReWatch IoT — shared contract and helpers used by every node.
+"""ReWatch(Iot) — shared contract and helpers used by every node.
 
 One file on purpose: start.sh copies it to /opt/rewatch/common/ on every Pi,
 so every service speaks exactly the same topics, bands and envelope.

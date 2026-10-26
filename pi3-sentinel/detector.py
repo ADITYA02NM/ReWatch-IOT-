@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ReWatch Sentinel — Raspberry Pi 3 on switch port 2 (detection + logging).
+"""ReWatch(Iot) Sentinel — Raspberry Pi 3 on switch port 2 (detection + logging).
 
 Three jobs, one process:
 

@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="760" viewBox="0 0 1120 760" role="img" aria-labelledby="title desc">
-  <title id="title">ReWatch proposed topology and C3 signal wiring</title>
-  <desc id="desc">Updated 2026-10-21. Illustration, not a photograph or validated deployment. Three Raspberry Pis connect by Ethernet to a switch or router. Sentinel needs a mirror port or TAP and has USB evidence storage. Core has an AC600 verification radio and USB C3 indicator. Herald has a TL-WN722N SMTP uplink. A separately powered Wi-Fi WROOM rig simulates rooms. C3 upload was verified, not OLED or pixel appearance.</desc>
+  <title id="title">ReWatch(Iot) enclosure architecture and C3 signal wiring</title>
+  <desc id="desc">Open-source component schematic. Three Raspberry Pis connect by Ethernet to an authorized LAN. Sentinel observes a mirror port or TAP and writes USB evidence. Core hosts MQTT, scoring, the dashboard and AC600 HTTP verification. Herald uses a configured Wi-Fi SMTP route. The enclosure contains a C3 indicator with optional Wi-Fi MQTT or Core serial, and a WROOM Black Hat software room model. See the hardware guide for transport limits and deployment acceptance.</desc>
   <rect width="1120" height="760" rx="20" fill="#0b1320"/>
   <g font-family="sans-serif" fill="#e8eef7">
-    <text x="36" y="45" font-size="26" font-weight="bold">ReWatch / proposed assembly</text>
-    <text x="36" y="74" fill="#f5c96b" font-size="15">ILLUSTRATION · C3 UPLOAD VERIFIED; OLED/PIXEL AND FULL DEPLOYMENT UNVERIFIED · 2026-10-21</text>
+    <text x="36" y="45" font-size="26" font-weight="bold">ReWatch(Iot) / open-source enclosure architecture</text>
+    <text x="36" y="74" fill="#a5b9d0" font-size="15">LAN OBSERVATION · LOCAL DECISIONS · OPERATOR RESPONSE</text>
     <g fill="none" stroke="#55cbb0" stroke-width="3">
       <path d="M560 170V205H200V245 M560 205V245 M560 205H920V245"/>
       <path d="M200 340V410 M560 340V410"/>
@@ -25,8 +25,8 @@
       <text x="560" y="274" font-size="20">Pi 4 Core</text><text x="560" y="300" font-size="14">Broker · score · dashboard · AC600 verify</text><text x="560" y="322" font-size="13">Local firewall ≠ peer LAN isolation</text>
       <text x="920" y="274" font-size="20">Pi 3 Herald</text><text x="920" y="300" font-size="14">Alerts · TL-WN722N Wi-Fi uplink</text><text x="920" y="322" font-size="13">Validate routes and actual interfaces</text>
       <text x="200" y="442" font-size="18">Sentinel USB evidence storage</text><text x="200" y="469" font-size="13">Verify power, mounts, capacity, retention</text>
-      <text x="560" y="442" font-size="18">C3 indicator · Core USB</text><text x="560" y="469" font-size="13">115200 baud · newline JSON + power</text>
-      <text x="920" y="442" font-size="18">WROOM demo rig · Wi-Fi LAN</text><text x="920" y="469" font-size="13">Separate USB power · synthetic rooms</text>
+      <text x="560" y="442" font-size="18">C3 indicator · inside enclosure</text><text x="560" y="469" font-size="13">Optional MQTT · Core serial alternative</text>
+      <text x="920" y="442" font-size="18">Black Hat WROOM rig · Wi-Fi</text><text x="920" y="469" font-size="13">Enclosure power · four modeled ACs</text>
     </g>
     <path d="M1020 410V190H745" stroke="#83aaff" stroke-width="2" stroke-dasharray="7 5" fill="none"/>
     <text x="1030" y="220" font-size="12" fill="#a9c2ff">Wi-Fi</text>

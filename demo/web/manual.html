@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>ReWatch — Operator Manual &amp; Technical Encyclopedia</title>
+<title>ReWatch(Iot) — Operator Manual &amp; Technical Encyclopedia</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
 :root{
@@ -53,7 +53,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 
 <div class="hd">
   <div>
-    <h1>ReWatch IoT — Technical Encyclopedia &amp; Operator Manual</h1>
+    <h1>ReWatch(Iot) — Technical Encyclopedia &amp; Operator Manual</h1>
     <span style="color:var(--muted);font-size:12px">Comprehensive architectural reference, mathematical threat modeling, and emergency runbook</span>
   </div>
   <span class="sp"></span>
@@ -86,7 +86,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
       <a href="#auth">12. WebAuthn Passkeys &amp; Security Boundary</a>
     </div>
     <div>
-      <a href="#attacks">13. Threat Vector &amp; Attack Simulation Matrix</a><br>
+      <a href="#attacks">13. Black Hat Threat Vector &amp; Attack Matrix</a><br>
       <a href="#api">14. Internal MQTT &amp; HTTP REST API Reference</a><br>
       <a href="#runbooks">15. Operator Runbooks &amp; Troubleshooting</a><br>
       <a href="#spec">16. Hardware BOM &amp; Pinout Specifications</a>
@@ -96,7 +96,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 
 <!-- ──────────────── 1. OVERVIEW ──────────────── -->
 <h2 id="overview">1. System Overview &amp; Hardware Fleet</h2>
-<p>ReWatch IoT is a zero-cloud, multi-tiered physical cybersecurity appliance engineered for residential and commercial building automation environments. It continuously observes the local IoT subnet, detects malicious probing and physical actuator anomalies, evaluates systemic threat mathematically, visually mirrors fleet health onto physical hardware twins, and executes automated deterministic containment playbooks when unacknowledged incidents cross critical thresholds.</p>
+<p>ReWatch(Iot) is a zero-cloud, multi-tiered physical cybersecurity appliance engineered for residential and commercial building automation environments. It continuously observes the local IoT subnet, detects malicious probing and physical actuator anomalies, evaluates systemic threat mathematically, visually mirrors fleet health onto physical hardware twins, and executes automated deterministic containment playbooks when unacknowledged incidents cross critical thresholds.</p>
 
 <p>Three Raspberry Pis and two ESP32 microcontrollers form an air-gapped security fabric inside a tamper-resistant enclosure:</p>
 
@@ -111,43 +111,43 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
   <tr>
     <td><b>Pi 4 · Core</b></td>
     <td>Raspberry Pi 4 Model B (4 GB / 8 GB)</td>
-    <td>Central threat engine, FIDO2/WebAuthn auth server, rolling 5-hour SQLite evidence cache, nftables IP blocking responder, REST/WS daemon.</td>
-    <td>Gigabit Ethernet (192.168.100.2), local UNIX sockets, loopback broker.</td>
-    <td>Fails open for benign occupants; locks down actuator setpoints on attack.</td>
+    <td>Threat engine, WebAuthn authentication, rolling SQLite evidence, capability-based command requests and HTTP/WebSocket dashboard. Optional host firewall enforcement is disabled by default and requires an inline gateway to affect peers.</td>
+    <td>Ethernet and the configured MQTT broker; example Core address 192.168.100.1.</td>
+    <td>Requests only configured responses. Check observed device state; a command request is not proof of physical actuation.</td>
   </tr>
   <tr>
     <td><b>Pi 3 · Sentinel</b></td>
     <td>Raspberry Pi 3 Model B+</td>
     <td>Promiscuous raw packet sniffer (libpcap/Scapy), ARP/ICMP/TCP scan detector, device enrollment registry, USB pen drive audit stream.</td>
-    <td>Fast Ethernet (192.168.100.3), dedicated USB flash mount (<code>/mnt/rewatch-log</code>).</td>
-    <td>Falls back seamlessly to high-endurance onboard MicroSD if USB is detached.</td>
+    <td>Ethernet (example 192.168.100.2), configured capture interface, USB mount <code>/mnt/rewatch-usb</code>.</td>
+    <td>Uses local fallback storage when USB is not mounted, provided that destination is writable. Inspect logging errors and retained files.</td>
   </tr>
   <tr>
     <td><b>Pi 3 · Herald</b></td>
     <td>Raspberry Pi 3 Model B+</td>
-    <td>Isolated notification dispatcher, direct TLS SMTP delivery, 5-minute system evidence summaries, independent cellular/Wi-Fi uplink.</td>
-    <td>Fast Ethernet (192.168.100.4), secondary uplink interface (<code>wlan0</code> / LTE modem).</td>
-    <td>Guaranteed non-blocking asynchronous queue; "accepted &ne; delivery" semantics.</td>
+    <td>SMTP notification dispatcher and five-minute evidence summaries through the configured network route.</td>
+    <td>Ethernet (example 192.168.100.3), optional configured Wi-Fi route such as <code>SMTP_IFACE=wlan1</code>.</td>
+    <td>Reports SMTP acceptance or failure. Relay acceptance does not establish inbox delivery.</td>
   </tr>
   <tr>
     <td><b>ESP32-C3 · Twin</b></td>
     <td>ESP32-C3 RISC-V Mini Development Board</td>
     <td>Physical shelf indicator, monochrome 128&times;64 I2C SSD1306 OLED panel, WS2812B Addressable NeoPixel, watchdog heartbeat listener.</td>
-    <td>USB CDC Serial (115200 baud, 8N1) connected directly to Pi 4 Core.</td>
+    <td>Inside the enclosure: optional Wi-Fi MQTT, or Core serial at 115200 baud. Stock builds are serial-only; wireless builds require local configuration and have packet-size/fleet-state limits.</td>
     <td>Displays sleeping face ("link lost") and blue pixel if Core heartbeat ceases.</td>
   </tr>
   <tr>
     <td><b>ESP32 · Rig</b></td>
     <td>ESP32-WROOM-32 Dual-Core DevKit</td>
-    <td>Four-zone physical HVAC climate simulator, GPIO DAC/ADC voltage telemetry, calibrated thermistors, HMAC command receiver.</td>
-    <td>Ethernet / 802.11b/g/n (192.168.100.5), MQTT client over TLS.</td>
-    <td>Failsafe hardware thermostat interlock prevents thermal runaway beyond 38 &deg;C.</td>
+    <td>Black Hat four-room AC model. Software generates temperature readings and accepts modeled setpoint commands; this firmware does not control mains HVAC.</td>
+    <td>Enclosure-powered 2.4 GHz Wi-Fi, plain MQTT and an unauthenticated HTTP status endpoint. Isolate the network.</td>
+    <td>A scenario model, not a physical thermostat or certified thermal safety interlock.</td>
   </tr>
 </table>
 
 <!-- ──────────────── 2. TOPOLOGY ──────────────── -->
 <h2 id="topology">2. Hardware Topology &amp; Dual-Bus Design</h2>
-<p>The system operates on an isolated physical network architecture designed to prevent pivot attacks:</p>
+<p>Reproduce the system on an isolated authorized network. Segmentation reduces exposure; the default anonymous MQTT bus does not authenticate its publishers. Both ESP32 boards belong inside the enclosure, not on the laptop during normal operation.</p>
 <pre>
   +-----------------------------------------------------------------------------------------+
   |                               BUILDING PHYSICAL IoT SUBNET                              |
@@ -194,7 +194,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 
 <!-- ──────────────── 4. VERIFICATION ──────────────── -->
 <h2 id="verification">4. Dual-Path Verification Architecture</h2>
-<p>A central tenet of ReWatch is that <b>an attacker who has compromised an IoT device's firmware can falsify its MQTT telemetry</b>. To counter this, ReWatch implements dual-path out-of-band verification:</p>
+<p>A central tenet of ReWatch(Iot) is that <b>an attacker who has compromised an IoT device's firmware can falsify its MQTT telemetry</b>. To counter this, ReWatch(Iot) implements dual-path out-of-band verification:</p>
 <div class="info-box">
   <b>Dual-Path Invariant:</b> For every enrolled device, telemetry published over MQTT is independently corroborated by the Pi 4 Core querying the device's secondary HTTP/REST telemetry diagnostic socket over an orthogonal network path.
 </div>
@@ -256,7 +256,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 <pre>
        +-------------------------------------------------------------+
        |                         INCIDENT OPEN                       |
-       |  Band: RED | Shelf: 4 Hz Red | Countdown: 120 s (Demo: 20 s)|
+       | Band: RED | Shelf: 4 Hz Red | Countdown: 120 s (Black Hat: 20 s) |
        +-------------------------------------------------------------+
                    |                                       |
      [Operator Acknowledges]                     [Deadline Expires]
@@ -283,13 +283,13 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 
 <ul>
   <li><b>Operator Acknowledgment (ACK):</b> Clicking "Acknowledge" on the dashboard or clicking the signed token link in the operator's e-mail cancels the automated response. The operator takes responsibility.</li>
-  <li><b>Automated Containment (PURPLE):</b> If no operator ACK is received within the deadline (120 s in production, 20 s in demo simulation), the band transitions to PURPLE and the automated containment playbook is fired.</li>
+   <li><b>Automated Response (PURPLE):</b> If no operator ACK is received within the configured deadline (120 s in the live stack, 20 s in Black Hat by default), the response playbook requests supported actions. PURPLE does not prove physical actuation or network isolation.</li>
   <li><b>Clean Resolution to GREEN:</b> When the actuator setpoint is restored and physical telemetry normalizes (score &lt; 30), the purple hold period concludes (6 s), the incident is marked <code>resolved</code>, and the band cleanly transitions back to GREEN.</li>
 </ul>
 
 <!-- ──────────────── 8. PLAYBOOKS ──────────────── -->
 <h2 id="playbooks">8. Automated Playbooks &amp; Firewall Containment</h2>
-<p>When an unacknowledged incident reaches PURPLE, ReWatch executes calibrated, policy-bounded containment actions based on the root cause:</p>
+<p>When an unacknowledged incident reaches PURPLE, ReWatch(Iot) executes calibrated, policy-bounded containment actions based on the root cause:</p>
 
 <table>
   <tr><th>Incident Root Cause</th><th>Target Vector</th><th>Automated Playbook Action</th><th>Security Boundary</th></tr>
@@ -325,7 +325,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 
 <h3>OLED 128&times;64 Pixel Map</h3>
 <ul>
-  <li><b>Top Bar:</b> Wordmark <code>ReWatch</code> on left; fleet heartbeat squares for Core (P4), Sentinel (3A), Herald (3B), and Rig (RG). Filled box = healthy online; outlined box = heartbeat lost.</li>
+  <li><b>Top Bar:</b> Wordmark <code>ReWatch(Iot)</code> on left; fleet heartbeat squares for Core (P4), Sentinel (3A), Herald (3B), and Rig (RG). Filled box = healthy online; outlined box = heartbeat lost.</li>
   <li><b>Center Readout:</b> 26 pt bold tabular-numeric threat score (0 to 100).</li>
   <li><b>Status Banner:</b> Dynamic 8 pt state banner displaying <code>NORMAL</code> (Green), <code>DETECT</code> (Yellow), <code>ALERT</code> (Red), <code>LOCKDOWN</code> (Purple), or <code>OFFLINE</code> (Blue).</li>
   <li><b>Bottom ECG Trace:</b> Electrocardiogram waveform sweeping at the band's pulse frequency (flatline normal, single beat detect, rapid double beat alert, high-frequency lockdown rhythm).</li>
@@ -342,47 +342,44 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 </table>
 
 <!-- ──────────────── 10. HERALD EMAIL ──────────────── -->
-<h2 id="herald">10. Pi 3 Herald: Air-Gapped E-mail Alerts</h2>
-<p>Pi 3 Herald handles outbound alerts across an independent uplink. To prevent attackers from blinding the operator by severing the main building gateway, Herald can be provisioned with a secondary cellular or Wi-Fi uplink interface (<code>SMTP_IFACE=wlan0</code>).</p>
+<h2 id="herald">10. Pi 3 Herald: Network E-mail Alerts</h2>
+<p>Herald sends notifications through a configured SMTP server. An optional Wi-Fi interface such as <code>SMTP_IFACE=wlan1</code> can bind the source address when available; configure and verify the actual route separately. This repository does not provision a cellular failover connection.</p>
 <div class="note">
   <b>Accepted &ne; Delivery Rule:</b> Successful SMTP transmission means the upstream relay accepted the message envelope. It is not cryptographic proof of inbox arrival. Herald explicitly logs transactions as <code>accepted by relay</code> rather than falsely asserting recipient reading.
 </div>
 <p>Herald dispatches alerts for: RED incident opening (with one-click ACK link), operator acknowledgment receipt, PURPLE automation execution, incident resolution, and periodic <b>5-minute evidence summaries</b> containing rolling event metrics.</p>
 
 <!-- ──────────────── 11. EVIDENCE ──────────────── -->
-<h2 id="evidence">11. Forensic Audit Logging &amp; USB Checksums</h2>
-<p>To resist forensic tampering and storage wear, logging is decoupled across two media:</p>
+<h2 id="evidence">11. USB &amp; SQLite Evidence</h2>
+<p>Sentinel logs observations while Core retains dashboard evidence. Protect both storage locations and verify them during deployment:</p>
 <ul>
-  <li><b>Sentinel USB Stick (WORM Storage):</b> Every bus message is written sequentially to a dedicated high-endurance USB flash drive mounted at <code>/mnt/rewatch-log</code>. Daily directories contain <code>telemetry.jsonl</code>, <code>events.jsonl</code>, and <code>bus.jsonl</code>. Each record contains timestamp, HMAC framing checksum, topic, and payload.</li>
-  <li><b>SD Card Failover:</b> If the USB drive is unplugged or fails, Sentinel alerts the operator via the fleet panel (<code>usb missing</code>) and safely diverts logs to the local MicroSD card.</li>
-  <li><b>Rolling SQLite Cache (Pi 4):</b> Pi 4 Core maintains a rolling 5-hour ring buffer in SQLite, enabling sub-millisecond querying for the dashboard history canvas and instant markdown report export.</li>
+  <li><b>Sentinel USB:</b> Daily directories under <code>/mnt/rewatch-usb/rewatch</code> contain <code>telemetry.jsonl</code>, <code>events.jsonl</code> and <code>bus.jsonl</code>. These are ordinary append-only application writes, not WORM hardware or HMAC-protected records.</li>
+  <li><b>Fallback storage:</b> When USB is not mounted, Sentinel uses its configured local fallback directory. Retention depends on writable storage; check errors, free space and actual files rather than assuming lossless failover.</li>
+  <li><b>Core SQLite:</b> The dashboard retains rolling samples and events for reports. The report API returns JSON; the browser can format a Markdown export. No fixed query-latency guarantee is made.</li>
 </ul>
 
 <!-- ──────────────── 12. WEBAUTHN PASSKEYS ──────────────── -->
 <h2 id="auth">12. WebAuthn Passkeys &amp; Security Boundary</h2>
 <p>The operator dashboard is locked behind zero-cloud FIDO2 / WebAuthn passkey authentication:</p>
 <ul>
-  <li><b>Cryptographic Authentication:</b> Utilizes public-key cryptography (ES256 / RS256). Private keys never leave the operator's hardware security module (YubiKey, Apple Touch ID / Face ID, Windows Hello).</li>
+  <li><b>Cryptographic Authentication:</b> WebAuthn verifies signatures against enrolled public keys. The server does not receive the authenticator's private key; authenticator storage and optional passkey synchronization depend on the chosen provider.</li>
   <li><b>Local Challenge Verification:</b> Challenges are generated randomly on the Pi 4 Core using <code>secrets.token_bytes(32)</code> and validated against enrolled public keys stored in SQLite.</li>
-  <li><b>Session Protection:</b> Successful WebAuthn ceremony issues an encrypted <code>HttpOnly</code>, <code>SameSite=Strict</code> session cookie. No shared passwords or static API keys are ever stored on disk.</li>
-  <li><b>Emergency Access Code:</b> For initial onboarding or headless kiosk access, <code>start.sh</code> issues ephemeral single-use registration tokens.</li>
+  <li><b>Sessions:</b> Sign-in issues an opaque <code>HttpOnly</code>, <code>SameSite=Strict</code> cookie, marked <code>Secure</code> for HTTPS. A configured fallback code is a separate authentication path, not a passkey.</li>
+  <li><b>Enrollment:</b> Run <code>python -m server.enroll</code> with the correct service data directory to issue a one-use setup token, valid for 600 seconds by default. This is distinct from the optional fallback access code.</li>
 </ul>
 
 <!-- ──────────────── 13. ATTACK MATRIX ──────────────── -->
-<h2 id="attacks">13. Threat Vector &amp; Attack Simulation Matrix</h2>
-<p>The integrated Black Hat feed simulator models real-world attack vectors across multiple OSI layers:</p>
+<h2 id="attacks">13. Black Hat Threat Vector &amp; Attack Matrix</h2>
+<p>Black Hat injects generated detection events and modeled readings; these scenarios do not run network attacks, exploit lock protocols or establish physical compromise. Impulses decay, while current device conditions contribute separately to engine state.</p>
 
 <table>
-  <tr><th>Attack Vector</th><th>Simulated Payload</th><th>Target</th><th>Detector</th><th>Point Weight</th></tr>
-  <tr><td><b>Door Lock Replay</b></td><td>Replayed HMAC challenge-response against ESP32 lock</td><td>entry-door</td><td>Sentinel Integrity Check</td><td>90 pts (Critical)</td></tr>
-  <tr><td><b>Smart Plug Surge</b></td><td>Overload injection spiking power draw to 3,100 W</td><td>lobby-plug</td><td>Sentinel Power Monitor</td><td>90 pts (Critical)</td></tr>
-  <tr><td><b>Fan Motor Lock</b></td><td>Counter-rotation overload driving motor into lock</td><td>lobby-fan</td><td>Sentinel Telemetry Watch</td><td>90 pts (Critical)</td></tr>
-  <tr><td><b>RTSP Hijack / Blackout</b></td><td>RTSP stream disruption and firmware watchdog trip</td><td>entry-camera</td><td>Sentinel Telemetry Watch</td><td>75 pts (Critical)</td></tr>
-  <tr><td><b>TCP SYN Flood</b></td><td>Rapid SYN storm exceeding 450 PPS</td><td>Subnet</td><td>Sentinel Sniffer</td><td>75 pts (Impulse)</td></tr>
-  <tr><td><b>DNS Amplification</b></td><td>High-volume UDP port 53 reflection storm</td><td>Subnet</td><td>Sentinel Sniffer</td><td>75 pts (Impulse)</td></tr>
-  <tr><td><b>Thermal Runaway</b></td><td>AC compressor override forcing room temp to 38 &deg;C</td><td>room1-ac</td><td>Sentinel Anomaly Watch</td><td>90 pts (Condition)</td></tr>
-  <tr><td><b>Hardware SPI Implant</b></td><td>Rogue hardware implant corrupting firmware checksum</td><td>Physical PCB</td><td>Sentinel Integrity Monitor</td><td>90 pts (Critical)</td></tr>
-  <tr><td><b>Nmap Stealth Scan</b></td><td>SYN/FIN/XMAS scan sweeping across &gt;8 ports</td><td>Subnet</td><td>Sentinel Sniffer</td><td>45 pts (Impulse)</td></tr>
+  <tr><th>Scenario family</th><th>Generated observation</th><th>Engine treatment</th></tr>
+  <tr><td>Door, camera and firmware integrity</td><td>Modeled forced-open, recording-gap or reported-version events</td><td>Integrity/firmware impulses; reported firmware is not attestation</td></tr>
+  <tr><td>Plug, fan, light and sensor conditions</td><td>Modeled power, speed, brightness, smoke or leak readings</td><td>Configured event and condition scoring; no physical actuation implied</td></tr>
+  <tr><td>AC temperature excursion</td><td>Room model warms after a scenario setpoint change</td><td>Temperature anomaly condition and configured response</td></tr>
+  <tr><td>Network flood</td><td>Synthetic flood detection</td><td>75-point decaying impulse</td></tr>
+  <tr><td>Port / ARP / ping scans</td><td>Synthetic scan detections</td><td>45 / 35 / 30-point decaying impulses</td></tr>
+  <tr><td>New device</td><td>Generated discovery event</td><td>20-point decaying impulse</td></tr>
 </table>
 
 <!-- ──────────────── 14. API REFERENCE ──────────────── -->
@@ -394,7 +391,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
   <tr><td><code>GET</code></td><td><code>/api/state</code></td><td>Session</td><td>Returns current threat score, band, active incident, and device telemetry.</td></tr>
   <tr><td><code>GET</code></td><td><code>/api/devices</code></td><td>Session</td><td>Returns enrolled hardware device inventory and capability policies.</td></tr>
   <tr><td><code>POST</code></td><td><code>/api/control</code></td><td>Session + Policy</td><td>Commands an actuator setpoint (e.g. <code>{"device":"room1-ac","action":"setpoint","value":20}</code>).</td></tr>
-  <tr><td><code>GET</code></td><td><code>/api/report?hours=5</code></td><td>Session</td><td>Exports full forensic markdown evidence report covering the past 5 hours.</td></tr>
+  <tr><td><code>GET</code></td><td><code>/api/report?hours=5</code></td><td>Session</td><td>Returns JSON evidence for the requested window; the browser formats Markdown exports.</td></tr>
   <tr><td><code>GET</code></td><td><code>/ws</code></td><td>Session</td><td>Full-duplex WebSocket stream for live telemetry, bus messages, and threat state.</td></tr>
   <tr><td><code>POST</code></td><td><code>/auth/login/begin</code></td><td>Public</td><td>Generates WebAuthn challenge for passkey sign-in.</td></tr>
   <tr><td><code>POST</code></td><td><code>/auth/login/complete</code></td><td>Public</td><td>Validates WebAuthn signature and establishes authenticated session.</td></tr>
@@ -450,7 +447,7 @@ hr{border:0;border-top:1px solid var(--line-2);margin:30px 0}
 
 <hr>
 <p class="dim" style="font-size:11px;color:var(--muted)">
-  ReWatch IoT Security Appliance &middot; Open Source Under Apache-2.0 &middot; Designed for High-Assurance IoT Infrastructure &middot; <a href="/">Return to Dashboard</a>
+  ReWatch(Iot) Security Appliance &middot; Open Source Under Apache-2.0 &middot; Designed for High-Assurance IoT Infrastructure &middot; <a href="/">Return to Dashboard</a>
 </p>
 
 </body>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-#  ReWatch IoT — one-shot deployer.
+#  ReWatch(Iot) — one-shot deployer.
 #
 #  Run this once from your admin laptop. It asks for the IP address of each
 #  device, then SSHes into every one, copies the code, installs the Python
@@ -36,7 +36,7 @@ hr(){ printf '%s\n' "───────────────────�
 ask(){ local p="$1" d="${2:-}" v; read -rp "$(c_b "$p")${d:+ [$d]}: " v; echo "${v:-$d}"; }
 asksecret(){ local p="$1" v; read -rsp "$(c_b "$p"): " v; echo >&2; echo "$v"; }
 
-echo; c_g "  ReWatch IoT — deployer"; echo; hr
+echo; c_g "  ReWatch(Iot) — deployer"; echo; hr
 echo "  I'll set up three Raspberry Pis and the broker from here."
 echo "  Nothing is sent until you confirm the plan."; hr
 
@@ -61,7 +61,7 @@ ALERT_TO="${ALERT_TO:-$(ask 'Send alerts to (comma-separated)' "$SMTP_USER")}"
 
 echo; c_y "  Dashboard"; echo
 REWATCH_HOSTNAME="${REWATCH_HOSTNAME:-$(ask 'Dashboard hostname' 'rewatch.local')}"
-ACCESS_CODE="${REWATCH_ACCESS_CODE:-$(ask 'Fallback access code for the demo (blank = passkey only)' '')}"
+ACCESS_CODE="${REWATCH_ACCESS_CODE:-$(ask 'Fallback access code for isolated Black Hat exercises (blank = passkey only)' '')}"
 
 fail(){ echo "Invalid $1; refusing deployment." >&2; exit 2; }
 ipv4(){

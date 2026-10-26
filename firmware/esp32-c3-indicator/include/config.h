@@ -1,4 +1,4 @@
-// ReWatch — ESP32-C3 indicator configuration.
+// ReWatch(Iot) — ESP32-C3 indicator configuration.
 //
 // A dumb display: it renders whatever the Pi 4 tells it and scores nothing of
 // its own. The Pi 4 is the single source of truth; two scorers would disagree.

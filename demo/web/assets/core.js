@@ -1,4 +1,4 @@
-/* ReWatch IoT — shared helpers + passkey lock screen.
+/* ReWatch(Iot) — shared helpers + passkey lock screen.
    Loaded on index.html before live.js. No dependencies, no CDN. */
 (() => {
   "use strict";

@@ -1,9 +1,12 @@
-# ReWatch firmware
+# ReWatch(Iot) firmware
 
-**Last updated: 2026-10-21**
+**Last updated: 2026-10-26**
 
-Keep the current roles: **C3 = USB display of the Pi 4 engine**, **WROOM =
-optional four-room AC demo rig**. Neither board computes threat scores. The rig
+Both ESP32 boards are enclosure components: **C3 = display of the Pi 4 engine**,
+**WROOM = optional four-room Black Hat AC rig**. WROOM uses Wi-Fi MQTT; C3 can
+use its optional MQTT transport or the stock serial transport. The laptop is
+used for flashing and administration, not as their required runtime host.
+Neither board computes threat scores. The rig
 models temperatures in software; it does not switch a real AC, relay or mains load.
 
 ## Build and flash
@@ -108,14 +111,28 @@ connected. This is distinct from the firmware's 3-second transport timeout.
 Set `INDICATOR_PORT` on the Pi to a stable `/dev/serial/by-id/...` path when
 multiple serial devices are connected.
 
-Optional legacy wireless mirror: creating C3 `include/secrets.h` from its own
-example enables subscriptions to `rewatch/indicator/frame` and
-`rewatch/threat/state`. This is not needed for the deployed USB design. The
-wireless path has a 512-byte MQTT packet buffer and payload limit below 640
-bytes, so rich threat states can exceed it; it also does not reconstruct fleet
-health from health topics. Use USB for current dashboard parity. Do not run two
-conflicting feeds; either feed can update the display. Credentials for this
-optional C3 path currently support an unauthenticated LAN broker only.
+## Optional Wi-Fi mirror
+
+To use MQTT inside the enclosure, copy
+`esp32-c3-indicator/include/secrets.example.h` to the adjacent ignored
+`secrets.h`, replace `wifi name` / `wifi pass` and set the Core broker address,
+then build and flash the matching board environment. Both C3 environments
+enable Wi-Fi when that header exists; without it they remain serial-only.
+
+The firmware subscribes to `rewatch/indicator/frame` and `rewatch/threat/state`
+over plain, unauthenticated MQTT. Keep this transport on an isolated trusted
+network. It has a **512-byte total MQTT packet buffer**, including topic and
+protocol overhead, and rejects payloads of 640 bytes or more. Rich threat
+states can therefore exceed its limits. Direct threat-state messages do not
+reconstruct fleet health; a compact frame can carry `nodes` and countdown
+fields, but the repository does not provide a Core compact-frame MQTT publisher.
+The wired Pi bridge supplies the complete aggregated frame.
+
+Choose one authoritative feed: serial remains active in a wireless build and
+conflicting inputs can overwrite each other. Stop `rewatch-indicator` if using
+MQTT exclusively. The local Black Hat workspace does not publish MQTT. Wireless
+operation still requires validation on your actual board/network; it is not
+claimed equivalent to the serial path.
 
 ## WROOM AC rig protocol
 
@@ -149,9 +166,9 @@ status LED is steady normally and toggles during spikes.
 
 These MQTT commands and HTTP status are **not a production AC control/security
 boundary**: HTTP has no authentication/TLS and MQTT uses plain TCP with optional
-credentials. Keep this demo on a trusted isolated network with broker ACLs.
+credentials. Keep this Black Hat rig on a trusted isolated network with broker ACLs.
 Switch the rig off when real building devices are connected, especially if
-they use the same device IDs; nothing else should depend on the demo board.
+they use the same device IDs; nothing else should depend on the scenario board.
 
 ## Reference provenance and deliberate differences
 
@@ -159,13 +176,13 @@ Compared read-only with sibling repositories (no private `secrets.h` copied):
 
 - `ULTRON` at `127d11a`, `firmware/esp32-c3-indicator/`: source of the USB-first
   dumb-display design, Wall-E eyes, ECG, shared stale-link state and saturated
-  pixel rails. ReWatch keeps that design but uses its current `rewatch` topics,
+  pixel rails. ReWatch(Iot) keeps that design but uses its current `rewatch` topics,
   BLUE band, countdown and `core/sentinel/herald/rig` node order. Old `ultron`
   risk/score, risk/band and `up` health messages are not the current protocol.
 - `ULTRON/firmware/esp32-wroom-tripwire/` at the same revision: a **radio-off
   reed-switch tripwire** on GPIO16–19 with GPIO2 heartbeat. It is a different
   hardware role, not a drop-in rig update. None of those reed/output pins or
-  semantics are transplanted into ReWatch's AC rig.
+  semantics are transplanted into ReWatch(Iot)'s AC rig.
 - `voidmain` at `ecbae88`, `firmware/esp32-risk-mini/`: older MQTT-driven display
   reference for colour/motion, fleet tiles and OLED probing. Its mDNS discovery,
   `voidmain` topics, muted colour rails and device overrides are deliberately
@@ -178,7 +195,7 @@ PlatformIO builds passed for the default C3 USB environment and WROOM
 2.0.17, ArduinoJson 7.4.3, PubSubClient 2.8.0). This is compilation only, not a
 claim of complete live MQTT/USB behaviour. Separately, on 21 October 2026 the
 connected C3 was identified through a CP2102 UART bridge and uploaded using
-`esp32-c3-uart`, with flash hash verification. The local demo serial bridge was
+`esp32-c3-uart`, with flash hash verification. The Black Hat serial bridge was
 started at 115200 baud. That confirms upload/host-link evidence, **not visual
 verification of the OLED or pixel**. The WROOM physical rig, C3 optional Wi-Fi
 path and complete three-Pi deployment remain unvalidated.
@@ -204,11 +221,11 @@ For a C3 connected through a CP210x/CH340 USB bridge (`/dev/ttyUSB*`), use
 That environment keeps `Serial` on UART0. The default C3 environment uses native
 USB CDC (`/dev/ttyACM*`). Identify the chip and port before uploading.
 
-To mirror only the laptop simulation after flashing, start `./demo/run.sh` and
-run `.venv/bin/python demo/indicator_bridge.py --port /dev/ttyUSB0` from the
-repository root. Keep a single serial writer; this is distinct from the
-production `pi4-core/indicator.py` bridge. See the [demo guide](../demo/README.md)
-and [hardware reference](../hardware.md) for evidence limits and wiring cautions.
+USB is used temporarily for flashing. During normal enclosed operation use the
+chosen MQTT feed, or Core serial as an alternative. The legacy Black Hat serial
+bridge remains available for compatibility, not as a laptop connection required
+by the enclosure. See the [Black Hat guide](../demo/README.md) and
+[hardware reference](../hardware.md) for transport boundaries and wiring cautions.
 
 This firmware does not establish camera, door, plug, light, fan or sensor
 compatibility. Such integrations need separately supported MQTT bridge profiles

@@ -1,5 +1,5 @@
 [Unit]
-Description=ReWatch dashboard (Pi 4 core)
+Description=ReWatch(Iot) dashboard (Pi 4 core)
 After=network-online.target mosquitto.service rewatch-core.service
 Wants=network-online.target
 [Service]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ReWatch — per-node installer. Runs ON a Raspberry Pi, as root.
+# ReWatch(Iot) — per-node installer. Runs ON a Raspberry Pi, as root.
 #
 #   sudo ./tools/node-install.sh <role>
 #   role = core | sentinel | herald
@@ -18,7 +18,7 @@ case "$ROLE" in core|sentinel|herald) ;; *)
   echo "usage: node-install.sh <core|sentinel|herald>" >&2; exit 2 ;; esac
 [[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }
 
-echo "── ReWatch $ROLE install ─────────────────────────────────────────"
+echo "── ReWatch(Iot) $ROLE install ─────────────────────────────────────────"
 
 # 1. system packages
 export DEBIAN_FRONTEND=noninteractive

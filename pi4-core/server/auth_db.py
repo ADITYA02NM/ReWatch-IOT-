@@ -1,4 +1,4 @@
-"""ReWatch auth database (auth.db — separate from evidence.db).
+"""ReWatch(Iot) auth database (auth.db — separate from evidence.db).
 
 Schema: credentials, sessions, challenges, enrollment_tokens, auth_audit.
 No biometric fields anywhere. Session IDs stored as SHA-256 hashes only.

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="650" viewBox="0 0 1120 650" role="img" aria-labelledby="title desc">
-  <title id="title">ReWatch observation, incident and response workflow</title>
+  <title id="title">ReWatch(Iot) observation, incident and response workflow</title>
   <desc id="desc">Sentinel network observations and device telemetry reach Core over MQTT. Core updates the dashboard and enclosure indicator. RED incidents trigger Herald e-mail and an acknowledgement window. Acknowledgement cancels automatic escalation; timeout attempts the configured response. Verify the outcome independently. Black Hat generated scenarios are separate from live monitoring.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#7dd3fc"/></marker>
@@ -10,7 +10,7 @@
     </style>
   </defs>
   <rect width="1120" height="650" rx="18" fill="#081422"/>
-  <text x="40" y="46" class="heading">REWATCH / FROM OBSERVATION TO RESPONSE</text>
+  <text x="40" y="46" class="heading">ReWatch(Iot) / FROM OBSERVATION TO RESPONSE</text>
   <text x="40" y="74" class="body">Local monitoring with a visible operator decision point</text>
 
   <rect x="40" y="108" width="260" height="116" rx="12" class="box"/>

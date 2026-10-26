@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""ReWatch IoT — Black Hat demo server (single machine, no hardware, no broker).
+"""ReWatch(Iot) — Black Hat workspace (single machine, no hardware, no broker).
 
-This serves a demo dashboard and runs the production detector and threat engine
+This serves the Black Hat dashboard and runs the shared detector and threat engine
 in-process. Traffic, devices and responses are simulated, not hardware evidence.
 
     python demo_server.py           # http://localhost:8080
@@ -13,7 +13,7 @@ start-up. Then:
     acknowledgement window. No acknowledgement triggers a simulated reset.
   * A separate Black Hat feed injects synthetic detections, not real attacks.
 
-No e-mail actually leaves the machine in demo mode (DEMO_SEND_MAIL=1 to really
+No e-mail leaves the workspace by default (DEMO_SEND_MAIL=1 to really
 send, using the same SMTP settings as the real Herald).
 """
 
@@ -249,7 +249,7 @@ class Sim:
                     "auto": "PURPLE — response requested", "resolved": "Resolved",
                     "summary": "5-minute system summary", "test": "Test message"}.get(kind, "")
             self._emit({"kind": "mail", "sev": "info", "node": "herald",
-                        "title": f"E-mail preview for {to} — [ReWatch] {subj} (delivery disabled)"})
+                        "title": f"E-mail preview for {to} — [ReWatch(Iot)] {subj} (delivery disabled)"})
             return
         # SMTP runs on a worker thread, never on the simulation/WS event loop.
         try:
@@ -813,7 +813,7 @@ def create_app(port: int = 8080, code: str = "rewatch", auth_path: Path | None =
     app["store"] = Store(evidence)
     app["summary"] = ReportWindow()
     app["auth_rp_id"] = os.environ.get("REWATCH_RP_ID", "localhost")
-    app["auth_rp_name"] = "ReWatch IoT (demo)"
+    app["auth_rp_name"] = "ReWatch(Iot) — Black Hat"
     app["auth_origins"] = [f"http://localhost:{port}", f"http://127.0.0.1:{port}"]
     app["auth_secure_cookies"] = False
     app["demo_code"] = code
@@ -851,7 +851,7 @@ def main():
     args = ap.parse_args()
     app = create_app(args.port, args.code)
 
-    print("\n  ReWatch IoT — DEMO")
+    print("\n  ReWatch(Iot) — BLACK HAT")
     print(f"  Open   http://localhost:{args.port}")
     print(f"  Passkey works on localhost, or use access code:  {args.code}")
     print("  Start/replay: devices at 20 s, AC spike at 30 s, then 20 s to acknowledge.")

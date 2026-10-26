@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ReWatch verifier — Pi 4 + TP-Link AC600 (USB Wi-Fi) joined to the IoT Wi-Fi.
+"""ReWatch(Iot) verifier — Pi 4 + TP-Link AC600 (USB Wi-Fi) joined to the IoT Wi-Fi.
 
 The Pi 4 does not trust the bus alone. Every IoT device reports over MQTT, but
 the Pi 4 also has its own radio on the same Wi-Fi, so it asks each device

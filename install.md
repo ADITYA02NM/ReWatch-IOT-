@@ -1,11 +1,11 @@
-# ReWatch installation: three Pis, ESP32s and laptop operation
+# ReWatch(Iot) installation: three Pis, ESP32s and laptop operation
 
 This guide starts with blank Raspberry Pi SD cards and ends with a dashboard,
 observed telemetry, evidence logs and an alert-path check. It also provides two
-separate laptop setups: the **self-contained simulation** and the **real MQTT
+separate laptop setups: the **Black Hat exercise workspace** and the **real MQTT
 stack**. Commands are for Raspberry Pi OS / Debian / Ubuntu unless stated otherwise.
 
-> **Scope and safety:** ReWatch is a research prototype, not a certified safety
+> **Scope and safety:** ReWatch(Iot) is a reproducible open-source project, not a certified safety
 > controller or a production-hardened security appliance. Outstanding security
 > review findings are not fixed by following an installation guide. Use an
 > isolated, authorized lab network; do not expose the dashboard, MQTT broker or
@@ -24,7 +24,7 @@ stack**. Commands are for Raspberry Pi OS / Debian / Ubuntu unless stated otherw
 8. [Build and flash both ESP32 firmwares](#8-build-and-flash-both-esp32-firmwares)
 9. [Connect real telemetry and supported controls](#9-connect-real-telemetry-and-supported-controls)
 10. [Start and verify the complete Pi system](#10-start-and-verify-the-complete-pi-system)
-11. [Laptop: self-contained simulation](#11-laptop-self-contained-simulation)
+11. [Black Hat workspace](#11-black-hat-workspace)
 12. [Laptop: real-data dashboard and collectors](#12-laptop-real-data-dashboard-and-collectors)
 13. [Troubleshooting](#13-troubleshooting)
 14. [Shutdown, updates, backups and acceptance record](#14-shutdown-updates-backups-and-acceptance-record)
@@ -35,13 +35,13 @@ stack**. Commands are for Raspberry Pi OS / Debian / Ubuntu unless stated otherw
 | Mode | What runs | What the displayed data means |
 |---|---|---|
 | Three Pis | Core on Pi 4; Sentinel and Herald on separate Pi 3s; optional ESP32s | Real messages and observations from the configured network and adapters |
-| Laptop simulation | `demo/run.sh`; no MQTT or Pis required | 28 synthetic office assets, four per kind; not real network discovery |
-| Laptop real-data stack | Production dashboard, engine, MQTT, Sentinel and Herald on Linux; optional verifier/indicator | Real incoming MQTT telemetry and authorized capture, not the office simulation |
+| Black Hat workspace | `demo/run.sh`; no MQTT or Pis required | 28 generated office assets, four per kind; not real network discovery |
+| Laptop real-data stack | Live dashboard, engine, MQTT, Sentinel and Herald on Linux; optional verifier | Real incoming MQTT telemetry and authorized capture, not the Black Hat dataset |
 
 The WROOM firmware models four AC rooms in software. It is a physical network
 endpoint, **not four physical air conditioners**. The ESP32-C3 is an indicator,
 not a detector. Cameras, doors, plugs, lights, fans and sensors require compatible
-external telemetry/control bridges for a real installation. The demo's 28 assets
+external telemetry/control bridges for a real installation. Black Hat's 28 assets
 do not automatically become 28 physical integrations.
 
 ## 2. Collect hardware and installation information
@@ -61,7 +61,7 @@ do not automatically become 28 physical integrations.
   compatible addressable RGB pixel. See [wiring](hardware.md).
 - Optional ESP32-WROOM rig and a second data USB cable.
 - Linux admin laptop with Internet access for downloading packages and flashing.
-  Windows/macOS can run the simulation; the live capture instructions below
+  Windows/macOS can run the Black Hat workspace; the live capture instructions below
   target Linux. A VM needs deliberate USB/network passthrough and routing.
 
 Disconnect power before wiring. Use 3.3 V logic and a shared ground; never attach
@@ -232,7 +232,7 @@ so the passphrase is not embedded in shell history:
 
 ```bash
 # Change the interface and SSID; run separately on the appropriate Pi.
-sudo nmcli --ask device wifi connect 'YOUR-LAB-SSID' ifname wlan1
+sudo nmcli --ask device wifi connect 'wifi name' ifname wlan1
 ip -br address show wlan1
 ip route
 ```
@@ -482,8 +482,8 @@ Then sign out and sign in again to check the normal path. Register a second
 approved authenticator as a recovery option. Do not use `--reset` as a normal
 setup step: it removes owner credentials. Preserve the authentication database.
 
-Any configured fallback code is a separate access path, not a passkey. The demo's
-recording-only passkey preview is also not authentication and must not be used
+Any configured fallback code is a separate access path, not a passkey. Black Hat's
+optional unverified passkey preview is also not authentication and must not be used
 as evidence that this enrollment procedure works.
 
 ## 8. Build and flash both ESP32 firmwares
@@ -515,7 +515,7 @@ is plugged into Core, stop `rewatch-indicator` there during flashing and restart
 it afterward. For bootloader problems, use the board's documented BOOT/RESET
 sequence and confirm the chip, cable and port before retrying.
 
-### ESP32-C3: wired OLED/pixel indicator
+### ESP32-C3: enclosed OLED/pixel indicator
 
 Read [firmware instructions](firmware/README.md) and review
 [`include/config.h`](firmware/esp32-c3-indicator/include/config.h) before wiring.
@@ -539,7 +539,18 @@ Choose **one** environment matching the actual board/USB connection; port names
 above are examples. The wired C3 path requires no Wi-Fi credential. Once attached
 to Core, set `INDICATOR_PORT=/dev/serial/by-id/YOUR-C3-ID` in Core's environment
 file, then restart `rewatch-indicator`. Stable by-id paths are preferable to
-guessing which `ttyUSB0` device appears first.
+guessing which `ttyUSB0` device appears first. This is the serial alternative,
+not a requirement to leave either ESP32 attached to the laptop.
+
+For enclosed Wi-Fi MQTT operation, copy
+`firmware/esp32-c3-indicator/include/secrets.example.h` to the adjacent ignored
+`secrets.h`. Fill in `wifi name`, `wifi pass` and the Core broker address before
+rebuilding and flashing the matching board environment. Read the
+[wireless transport limits](firmware/README.md#optional-wi-fi-mirror): this path
+is plain unauthenticated MQTT, has a 512-byte total packet buffer, does not
+aggregate fleet health and has not been hardware-validated. No Core compact-frame
+MQTT publisher is included. Select one feed; stop `rewatch-indicator` when using
+MQTT exclusively so serial and wireless inputs do not compete.
 
 Core sends newline-delimited JSON at 115200 baud, approximately every 100 ms.
 Unknown/stale data should show BLUE rather than a reassuring remembered score.
@@ -650,7 +661,7 @@ Keep `enabled: false` until the bridge's actual command handling and read-back
 are checked. Add all four AC IDs explicitly if you intentionally enable the
 four-room lab rig. A successful `/api/control` response is **202 requested**, not
 proof that a physical action occurred. Confirm fresh telemetry and, where
-applicable, the physical device. ReWatch does not supply general ONVIF, Matter,
+applicable, the physical device. ReWatch(Iot) does not supply general ONVIF, Matter,
 vendor-cloud or door-controller integrations merely because a kind appears in
 the UI. Firmware strings are metadata, not remote attestation.
 
@@ -691,14 +702,15 @@ A process being active is only the first check. In the owner dashboard verify:
    heartbeat ages. Missing Sentinel/Herald can put the real engine in BLUE;
    do not hide this by injecting fake heartbeats.
 2. **Inventory:** only intended observed/enrolled assets, stable IDs and current
-   readings. Production inventory is not automatically the demo's 28 devices.
+   readings. Live inventory is not automatically Black Hat's 28 devices.
 3. **Capture:** bounded authorized traffic appears on Sentinel's selected
    interface; understand the initial 300-second device-learning window.
 4. **Evidence:** mount/USB indication and actual dated JSONL files agree; Core's
    database at `/var/lib/rewatch/rewatch.db` persists its events/incidents.
 5. **Verification:** the rig HTTP path works over the selected associated Wi-Fi
    adapter; actual MQTT and HTTP readings agree within the configured tolerance.
-6. **Indicator:** one writer owns the C3 port; OLED/pixel match the current band
+6. **Indicator:** the selected MQTT or Core serial feed reaches the enclosed C3;
+   OLED/pixel match the current band
    and become stale/BLUE when the relevant feed is lost.
 7. **Mail:** use **Send test e-mail**, check Herald's SMTP result, then independently
    check the intended mailbox and spam folder. SMTP acceptance is not delivery.
@@ -707,7 +719,7 @@ A process being active is only the first check. In the owner dashboard verify:
    repository's broader outstanding security-review findings.
 
 For an optional response drill, use only the isolated WROOM model. The following
-commands change its simulated temperatures; do not run them against a broker
+commands change the Black Hat rig's modeled temperatures; do not run them against a broker
 with colliding real device IDs:
 
 ```bash
@@ -721,9 +733,9 @@ assuming a particular instantaneous score. An automatic control response
 requires an intentionally enabled, matching bridge policy. Do not leave a
 temperature/safety drill active unattended.
 
-## 11. Laptop: self-contained simulation
+## 11. Black Hat workspace
 
-This is the quickest way to demonstrate the dashboard. No MQTT broker, Pi,
+Use this workspace for Black Hat scenarios and workflow rehearsals. No MQTT broker, Pi,
 packet capture, USB drive or hardware is required. In a fresh local checkout:
 
 ```bash
@@ -732,14 +744,14 @@ python3 -m venv .venv
 ./demo/run.sh
 ```
 
-Open **`http://localhost:8080` on that laptop**. The stock public demo code is
+Open **`http://localhost:8080` on that laptop**. The stock public workspace code is
 `rewatch`; a locally configured `DEMO_CODE` overrides it. This published default
-is not a production secret. See [the demo guide](demo/README.md) for its UI flow.
+is not a live-system secret. See [the Black Hat guide](demo/README.md) for its UI flow.
 On Windows, create the virtual environment with `py -m venv .venv`, install with
 `.venv\Scripts\python.exe -m pip install -r demo\requirements.txt`, and launch
 `.venv\Scripts\python.exe demo\demo_server.py` instead of the Bash wrapper.
 
-For private options, copy the public demo template once, then edit locally:
+For private options, copy the public workspace template once, then edit locally:
 
 ```bash
 cp demo/.env.example demo/.env
@@ -751,30 +763,25 @@ Do not overwrite an existing configured `demo/.env`. Useful settings are:
 | Setting | Meaning |
 |---|---|
 | `DEMO_PORT=8080` | Local server port |
-| `DEMO_AUTO_SPIKE=1` | Scripted AC spike after the demo discovery phase; `0` disables it |
-| `DEMO_SEND_MAIL=0` | Keep off for a no-mail demo; configure private SMTP only if deliberately testing |
+| `DEMO_AUTO_SPIKE=1` | Scripted AC spike after Black Hat discovery; `0` disables it |
+| `DEMO_SEND_MAIL=0` | Keep off for a mail-disabled workspace; configure private SMTP only if deliberately testing |
 | `DEMO_PASSKEY_PREVIEW=0` | Keep preview disabled for normal use; it is an unverified recording convenience |
 
-The demo binds loopback by default. Its first scene discovers 28 synthetic
+The Black Hat workspace binds loopback by default. Its first scene discovers 28 generated
 office devices after approximately 20 seconds and can spike an AC at 30 seconds.
-Simulation ACK defaults to 20 seconds rather than production's 120 seconds.
+Black Hat ACK defaults to 20 seconds rather than the live stack's 120 seconds.
 Replay resets score/events/history and scenario state while preserving discovered
 inventory; stored evidence is separate. Black Hat mode generates simulated
-events, not real attacks or capture. The calm score animation is demo-only.
+events, not real attacks or capture. The calm score animation is Black Hat-only.
 
 Stop with Ctrl+C and restart with `./demo/run.sh`. It is not a background boot
 service just because it ran once. Do not expose its recording preview over the
 LAN or treat dismissal of a preview passkey prompt as a successful real login.
 
-Optional physical C3 demonstration, after flashing it and closing other serial
-writers, uses a second terminal:
-
-```bash
-.venv/bin/python demo/indicator_bridge.py --port /dev/serial/by-id/YOUR-C3-ID
-```
-
-This bridge forwards **simulation** state. Stop it before using the production
-indicator process or uploading new firmware to the same serial board.
+The enclosure's ESP32s are not laptop peripherals in normal operation. This
+workspace does not publish MQTT to the enclosure; its generated readings stay
+separate from live monitoring. USB is used temporarily for flashing, with Core
+serial retained as an alternative to the optional C3 wireless transport.
 
 ## 12. Laptop: real-data dashboard and collectors
 
@@ -785,7 +792,7 @@ capture visibility/privileges. A dashboard alone is not a collector or engine.
 
 ### Prepare software and private local state
 
-Run from the repository root. If using the same checkout as the simulation,
+Run from the repository root. If using the same checkout as Black Hat,
 reuse the virtual environment but install the full requirements:
 
 ```bash
@@ -839,9 +846,9 @@ mode; the loader gives existing environment variables precedence. Set
 `REWATCH_ENV` **before starting each process**. The production programs do not
 automatically use `demo/.env` or a repository-root `.env`.
 
-Port 8081 avoids collision with a simulation still on 8080. The two modes have
-separate databases and can coexist, but do not share an indicator's serial port.
-For clarity stop the simulation while checking real observations.
+Port 8081 avoids collision with Black Hat on 8080. The two modes have separate
+databases and can coexist; keep Black Hat/live identities and evidence separate.
+For clarity stop Black Hat while checking real observations.
 
 ### Choose one broker
 
@@ -917,11 +924,9 @@ Optional terminals, if the actual Wi-Fi route/HTTP bridge or C3 is present:
 .venv/bin/python pi4-core/verifier.py
 ```
 
-```bash
-# Set a real connected by-id path, and ensure no demo bridge owns it.
-export INDICATOR_PORT=/dev/serial/by-id/YOUR-C3-ID
-.venv/bin/python pi4-core/indicator.py
-```
+The enclosed C3 uses the selected Core-side feed, not a required laptop USB
+connection. Configure the [optional MQTT transport](firmware/README.md#optional-wi-fi-mirror)
+against the actual broker, or use Core serial as the wired alternative.
 
 Without a compatible HTTP status endpoint, the verifier cannot magically verify
 non-AC devices. Without actual Sentinel/Herald heartbeats the engine can show
@@ -941,7 +946,7 @@ Open **`http://localhost:8081` on the laptop**, register the owner with the
 one-use code, and complete the authenticator prompt. Localhost is the browser's
 secure-context exception. If the browser has no suitable authenticator, use a
 supported hardware/security key or an explicitly chosen fallback-access setup;
-do not enable demo preview in the production server.
+do not enable the Black Hat preview in the live server.
 
 Point the WROOM/real bridges at the broker chosen above, inspect their telemetry
 topics and verify current readings in the production dashboard. For other real
@@ -968,7 +973,7 @@ non-privileged TLS port such as 8443 for a normal laptop user and include it in
 | Old passkey stops working after a hostname change | Passkeys are RP-scoped; re-enroll at the new trusted hostname, preserve old DB/recovery credentials |
 | MQTT disconnected | Same broker address/port on all clients, listener bound to reachable interface, firewall/isolation and matching broker credentials |
 | BLUE band | Inspect Sentinel/Herald freshness and the state's reason; browser LIVE is not the same as all nodes healthy |
-| No device cards in real mode | Publishers must send valid telemetry; demo assets are not real auto-discovery; check policy and topics |
+| No device cards in real mode | Publishers must send valid telemetry; Black Hat assets are not real auto-discovery; check policy and topics |
 | Few captured packets | Correct interface and SPAN/TAP wiring; ordinary switched/Wi-Fi client traffic may not expose peers |
 | USB indicator says absent | `mountpoint`, not just directory existence; drive permissions/free space and Sentinel fallback path |
 | Wi-Fi verifier unknown | Interface has IP/route, rig `/status` reachable on port 80, correct device ID and temperature fields |
@@ -978,7 +983,7 @@ non-privileged TLS port such as 8443 for a normal laptop user and include it in
 | C3 upload cannot open port | Correct USB mode/data cable/permissions; close serial monitors and the bridge; use documented BOOT/RESET |
 | C3 stays BLUE | Actual serial port/baud, current host state and node heartbeat freshness; one serial writer only |
 | OLED/pixel blank | Physical power/common ground/pin mapping/I²C address/display/pixel type; compilation does not validate wiring |
-| Simulated data mistaken for real data | Check which server/port you opened; demo has `simulation: true`, no real MQTT, and synthetic office assets |
+| Black Hat/live data confusion | Check the server/port; Black Hat has `simulation: true`, no real MQTT, and generated office assets |
 
 Review journal/log excerpts locally and redact credentials, tokens, email
 addresses and network data before sharing them. Never attach `auth.db`, private
@@ -1020,7 +1025,7 @@ afterward. Do not assume a successful software update validates physical paths.
 - [ ] SSH identity/key login, hostname, reserved IP and correct time checked.
 - [ ] Actual capture topology and authorized observation demonstrated.
 - [ ] MQTT connectivity, genuine node health and real telemetry checked.
-- [ ] Device IDs/capabilities reviewed; no demo/rig identity collision.
+- [ ] Device IDs/capabilities reviewed; no Black Hat/live identity collision.
 - [ ] Wi-Fi HTTP verification path measured, or explicitly marked unverified.
 - [ ] Persistent USB evidence and fallback behavior checked.
 - [ ] Trusted HTTPS and real owner enrollment/login checked on intended devices.
@@ -1038,15 +1043,15 @@ Repository tests can be run without deploying hardware:
 ```
 
 Browser integration and physical acceptance are separate. Do not report these
-commands as proof of hardware operation or mail delivery. See the dated
-[verification record](docs/BUILD-CHECKLIST.md) for the existing evidence boundary.
+commands as proof of hardware operation or mail delivery. See
+[deployment acceptance](hardware.md#deployment-acceptance) for the hardware evidence boundary.
 
 ## 15. Reference material
 
 Repository sources used by this guide:
 
 - [Hardware and wiring](hardware.md), [firmware guide](firmware/README.md),
-  [demo guide](demo/README.md), [security model](SECURITY.md).
+  [Black Hat guide](demo/README.md), [security model](SECURITY.md).
 - [Remote deployment script](start.sh), [node installer](tools/node-install.sh),
   [environment template](.env.example), [device policy template](devices.example.json).
 - [Core services](pi4-core/systemd/), [Sentinel service](pi3-sentinel/systemd/),

@@ -57,7 +57,7 @@
       return "";
     }).join("");
     host.innerHTML = `
-      <svg viewBox="0 0 420 285" role="img" aria-label="ReWatch box internals and packet flow">
+      <svg viewBox="0 0 420 285" role="img" aria-label="ReWatch(Iot) box internals and packet flow">
         <rect class="bb-switch" x="150" y="8" width="120" height="34" rx="5"/>
         <text class="bb-label" x="210" y="29" text-anchor="middle">ROUTER · SWITCH</text>
         ${cables}${boards}
@@ -185,7 +185,7 @@
     const midY = boxY + boxH / 2;
     const parts = [];
     parts.push(`<rect class="im-box" x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="6"/>`);
-    parts.push(`<text class="im-box-label" x="${boxX + boxW / 2}" y="${midY - 4}" text-anchor="middle">REWATCH</text>`);
+    parts.push(`<text class="im-box-label" x="${boxX + boxW / 2}" y="${midY - 4}" text-anchor="middle">ReWatch(Iot)</text>`);
     parts.push(`<text class="im-box-sub" x="${boxX + boxW / 2}" y="${midY + 12}" text-anchor="middle">box · 3 Pi + 2 ESP32</text>`);
     if (kinds.length) {
       const firstCy = top + nodeH / 2, lastCy = top + (kinds.length - 1) * step + nodeH / 2;
@@ -204,7 +204,7 @@
         <text class="im-ip" x="${nodeX + nodeW - 10}" y="${cy + 4}" text-anchor="end"></text>
       </g>`);
     });
-    host.innerHTML = `<svg viewBox="0 0 420 300" role="img" aria-label="External IoT device kinds connected to the ReWatch box">${parts.join("")}</svg>`;
+    host.innerHTML = `<svg viewBox="0 0 420 300" role="img" aria-label="External IoT device kinds connected to the ReWatch(Iot) box">${parts.join("")}</svg>`;
     const links = host.querySelectorAll(".im-link");
     mapNodes = [...host.querySelectorAll(".im-kind")].map((node, i) => {
       node.dataset.kind = kinds[i];

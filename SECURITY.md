@@ -1,6 +1,6 @@
 # Security and responsible operation
 
-ReWatch is a prototype for **authorized lab and building-IoT experiments**.
+ReWatch(Iot) provides local monitoring for **authorized building-IoT networks**.
 Do not rely on it as a safety interlock, certified alarm or guaranteed intrusion
 prevention system. Do not connect the WROOM rig directly to mains equipment.
 
@@ -23,14 +23,14 @@ prevention system. Do not connect the WROOM rig directly to mains equipment.
   are device-specific, not universal vendor integrations. Doors are lock-only
   with confirmation; no firmware writes or automatic non-AC playbooks exist.
   Firmware-version comparisons use unattested metadata, not signed attestation.
-  Demo network responses cannot invoke firewall enforcement, even if the
+  Black Hat network responses cannot invoke firewall enforcement, even if the
   production firewall environment flag is inherited.
 - **Authentication:** real WebAuthn requires enrolled credentials, user
   verification and a trusted origin/RP ID. Use HTTPS for remote LAN access;
   HTTP localhost is a development exception. The optional shared access code
-  is a weaker fallback—leave it empty outside a controlled demonstration.
-- **Recording-only bypass:** `DEMO_PASSKEY_PREVIEW=1` enables a plainly labelled,
-  unverified local demo unlock after any browser prompt result, including cancel.
+  is a weaker fallback—leave it empty outside an isolated Black Hat exercise.
+- **Optional Black Hat access bypass:** `DEMO_PASSKEY_PREVIEW=1` enables an
+  unverified local workspace unlock after any browser prompt result, including cancel.
   It is off by default, loopback/Host restricted and audited; it does not exist
   in the production application. Never present it as fingerprint verification.
 - **Credentials:** copy only example configuration. Keep `.env`, `secrets.h`,
@@ -44,7 +44,7 @@ prevention system. Do not connect the WROOM rig directly to mains equipment.
   Wi-Fi, routing, mounts, trusted TLS, mirror ports or comprehensive hardening.
 - **Evidence:** USB JSONL and dashboard records are not immutable/tamper-proof
   forensic storage. Protect access, synchronize clocks, set retention and
-  backups, and consider log privacy. Demo live state is synthetic and in memory;
+  backups, and consider log privacy. Black Hat live state is synthetic and in memory;
   its SQLite events, samples and incidents persist across Replay and restart.
 
 ## Before deployment

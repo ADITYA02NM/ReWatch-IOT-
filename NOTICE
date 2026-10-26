@@ -1,7 +1,7 @@
-ReWatch IoT — real-hardware IoT threat detection, scoring, alerting and response
-Copyright 2026 the ReWatch IoT team
+ReWatch(Iot) — real-hardware IoT threat detection, scoring, alerting and response
+Copyright 2026 the ReWatch(Iot) team
 
-ReWatch IoT grew out of the ULTRON smart-house project and keeps its
+ReWatch(Iot) grew out of the ULTRON smart-house project and keeps its
 Apache-2.0 licence. Parts of the passkey (WebAuthn) authentication module,
 the local-CA script and the ESP32-C3 indicator firmware (boot animation,
 ECG trace) are carried over from ULTRON.

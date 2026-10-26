@@ -1,5 +1,5 @@
 [Unit]
-Description=ReWatch Wi-Fi verifier (Pi 4 core, AC600)
+Description=ReWatch(Iot) Wi-Fi verifier (Pi 4 core, AC600)
 After=network-online.target mosquitto.service
 Wants=network-online.target
 [Service]

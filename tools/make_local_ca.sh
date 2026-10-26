@@ -48,8 +48,8 @@ if [[ "$reissue" == false ]]; then
 distinguished_name = dn
 prompt = no
 [dn]
-CN = ReWatch Local CA
-O  = ReWatch
+CN = ReWatch(Iot) Local CA
+O  = ReWatch(Iot)
 OU = Governance
 CACNF
 
@@ -83,7 +83,7 @@ distinguished_name = dn
 prompt = no
 [dn]
 CN = $DOMAIN
-O  = ReWatch
+O  = ReWatch(Iot)
 SRVCNF
 
 openssl req -new -key "$CERT_DIR/server.key" \

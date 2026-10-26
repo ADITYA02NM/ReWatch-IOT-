@@ -1,7 +1,7 @@
 """Explicit MQTT bridge permissions; telemetry is evidence, never authorization.
 
 This is not a vendor protocol driver. An enrolled device or trusted bridge must
-translate action/value commands and publish observed state on the ReWatch bus.
+translate action/value commands and publish observed state on the ReWatch(Iot) bus.
 """
 from __future__ import annotations
 

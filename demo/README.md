@@ -1,10 +1,11 @@
-# ReWatch IoT — laptop demonstration
+# ReWatch(Iot) — Black Hat workspace
 
-**Last updated: 2026-10-21**
+**Last updated: 2026-10-26**
 
-Run the detector and threat engine against a ten-device, four-room AC building,
-with a browser dashboard. No Raspberry Pi, MQTT broker, root access or ESP32 is
-required. Synthetic traffic, telemetry and responses are not physical evidence.
+Exercise the detector, threat engine and operator dashboard against 28 office
+assets, four per device kind. No Raspberry Pi, MQTT broker, root access or ESP32
+is required. Black Hat generates traffic, telemetry and responses for controlled
+scenarios; these are not physical monitoring evidence.
 See the [project overview](../README.md) and [hardware limits](../hardware.md).
 
 ## Start and sign in
@@ -17,7 +18,7 @@ From the repository root, with Python 3.10+ and `venv` available:
 ./demo/run.sh --port 9000
 ```
 
-The launcher creates `.venv` when absent and installs missing demo dependencies.
+The launcher creates `.venv` when absent and installs missing workspace dependencies.
 To explicitly synchronize an existing environment:
 
 ```bash
@@ -25,14 +26,14 @@ To explicitly synchronize an existing environment:
 ```
 
 Open **http://localhost:8080**, choose **Access code**, and enter the code printed
-by the launcher. The source/default example code is `rewatch`; this workstation's
-ignored `demo/.env` overrides it with `P2408`. That local recording code is not a
-production password or a portable repository default. Normal passkey sign-in
+by the launcher. The source/default code is `rewatch`; `DEMO_CODE` in the ignored
+local configuration can override it. This shared exercise code is not a
+production password. Normal passkey sign-in
 requires an enrolled credential and a verified ceremony.
 
-## Recording sequence and controls
+## Exercise sequence and controls
 
-**Replay** or **Ctrl+Shift+R** resets the shared demo timeline, score, events and
+**Replay** or **Ctrl+Shift+R** resets the shared Black Hat timeline, score, events and
 graph while retaining discovered devices and restoring their simulated baseline
 readings. Ordinary refresh reconnects without resetting. All viewers share one
 building; Replay affects every viewer.
@@ -45,13 +46,13 @@ building; Replay affects every viewer.
 | RED +20 s without ACK | PURPLE; a simulated command requests the 20 °C setpoint |
 | ACK before deadline | Records operator ownership and cancels automatic escalation; the fault remains |
 
-The demo ACK window defaults to **20 seconds**; production defaults to
+The Black Hat ACK window defaults to **20 seconds**; production defaults to
 **120 seconds**. Setpoint commands do not make temperature recover instantly.
 Use the separate manual **AC spike/reset** controls to change the simulated
 fault. **Black Hat feed** injects synthetic detections only: it does not launch
 scans or attacks. Replay restarts the scenario, not the retained report history.
 Select a topology tile for observed evidence and supported synthetic controls.
-The firmware demo changes a reported version string; it does not flash a device
+The firmware drill changes a reported version string; it does not flash a device
 or prove integrity. Door control is lock-only, with explicit confirmation.
 
 The dashboard, `/reports.html`, `/debug.html` and `/manual.html` are available.
@@ -61,10 +62,10 @@ tooltip shows the score, band and alert at the hovered moment — while calm the
 published score breathes gently, always well inside GREEN), **02 Alerts**
 (incident ring, per-alert Acknowledge, paginated feed), **03 BlackBox**
 (schematic of the box internals with packet pulses on live events and lids
-opening on detections), **04 IoT connections** (a modular flowchart: the ReWatch
+opening on detections), **04 IoT connections** (a modular flowchart: the ReWatch(Iot)
 box feeds seven device-kind nodes — AC, camera, door, plug, light, fan, sensor —
 with live counts; selecting any kind reveals four location cards with live
-readings and hover/focus details), **05 Controls** (Demo AC start/stop, Clear, Export .md,
+readings and hover/focus details), **05 Controls** (AC rig start/stop, Clear, Export .md,
 Refresh, OLED+LED preview, Mail test, Replay, Black Hat feed, Firmware drill)
 and **06 IoT details** (kind groups with sub-device evidence, firmware facts and
 the capability-approved control forms). On a phone, panels appear one at a time
@@ -96,21 +97,21 @@ The five-hour report uses SQLite-retained events, score samples and incidents
 across Replay and process restart. Five hours is a reporting window, not a claim
 that five hours of evidence already exist; only accumulated records can appear.
 
-## Passkey preview: recording only, never production
+## Local access boundary
 
 ```bash
 DEMO_PASSKEY_PREVIEW=1 ./demo/run.sh
 ```
 
-This explicitly labelled, **off-by-default** option requests a browser passkey
-prompt and grants an **unverified local demo session even if you cancel**.
+This **off-by-default** option requests a browser passkey
+prompt and grants an **unverified local Black Hat session even if you cancel**.
 It is cosmetic, **not authentication**, and must **never** be used in production.
 Preview access is restricted to loopback; use `localhost`. Normal verified
 passkey routes and production authentication are separate from this preview.
 
 The browser and operating system control the QR/phone/biometric UI. The website
 cannot force a QR code to appear or guarantee an unenrolled phone can complete
-the ceremony. A prompt, cancellation or demo unlock is not proof of identity.
+the ceremony. A prompt, cancellation or workspace unlock is not proof of identity.
 
 ## E-mail: preview by default
 
@@ -132,34 +133,31 @@ inbox. Check recipient delivery separately. Never publish passwords or record
 them on screen; revoke exposed credentials and generate replacements. Settings
 are loaded from ignored `demo/.env`; do not commit that file.
 
-## Optional USB display bridge
+## Enclosure transport
 
-Flash the matching C3 environment using the [firmware guide](../firmware/README.md),
-start the demo, then in another terminal run:
+The ESP32 boards live inside the enclosure, not on the laptop as required
+peripherals. WROOM uses Wi-Fi MQTT. C3 has an
+[optional MQTT transport](../firmware/README.md#optional-wi-fi-mirror), with
+Core serial as an alternative; USB is used temporarily for flashing. The stock
+C3 build remains serial-only until a local wireless header is configured.
 
-```bash
-.venv/bin/python demo/indicator_bridge.py --port /dev/ttyUSB0
-# If the server uses another port, also pass --http-port 9000.
-```
-
-Confirm the serial device first. The bridge reads the local demo configuration
-and writes newline-delimited JSON at 115200 baud. Do not run a serial monitor,
-production bridge or second writer on the same port. Mirroring a simulation
-does not validate real monitoring. The connected C3 upload was verified;
-physical OLED/pixel appearance still needs inspection.
+This Black Hat workspace does not publish MQTT to the enclosure. Its legacy
+serial bridge remains available for compatibility, not as part of the required
+runtime wiring. Generated scenes do not validate live monitoring. The recorded
+C3 upload check does not establish wireless or OLED/pixel validation.
 
 ## Configuration
 
 | Setting | Source default | Effect |
 | --- | --- | --- |
 | `DEMO_PORT` | `8080` | HTTP port |
-| `DEMO_CODE` | `rewatch` | Shared local demo access code; ignored `.env` may override |
+| `DEMO_CODE` | `rewatch` | Shared local exercise access code; ignored `.env` may override |
 | `DEMO_AUTO_SPIKE` | `1` | Enable the automatic +30 s AC scenario |
-| `DEMO_ACK_TIMEOUT_S` | `20` | Demo acknowledgement window in seconds |
+| `DEMO_ACK_TIMEOUT_S` | `20` | Black Hat acknowledgement window in seconds |
 | `DEMO_SEND_MAIL` | `0` | Preview only unless explicitly enabled |
 | `DEMO_PASSKEY_PREVIEW` | `0` | Cosmetic, unverified loopback-only preview |
 
-The AC scenario is not a universal device-compatibility demonstration. Other
+The AC scenario does not establish universal device compatibility. Other
 device types require explicitly supported, opted-in MQTT bridge capability
 profiles and device-specific validation; do not infer native ONVIF or Matter
-support. Do not use this demo to unlock physical doors or write firmware.
+support. Do not use Black Hat exercises to unlock physical doors or write firmware.

@@ -1,4 +1,4 @@
-/* ReWatch IoT — live dashboard. Drives every panel from the WebSocket.
+/* ReWatch(Iot) — live dashboard. Drives every panel from the WebSocket.
    Vanilla JS, hand-drawn canvas/SVG, no framework, no CDN. */
 (() => {
   "use strict";
@@ -60,7 +60,7 @@
   function hydrate(m) {
     S.nodes = m.nodes || {}; S.telemetry = m.telemetry || {}; S.verify = m.verify || {};
     S.history = (m.history || []).slice(-600); S.events = (m.events || []).slice(-200);
-    S.mqtt = m.mqtt; if (m.version) $("#f-ver").textContent = "ReWatch IoT · v" + m.version;
+    S.mqtt = m.mqtt; if (m.version) $("#f-ver").textContent = "ReWatch(Iot) · v" + m.version;
     if (m.state) applyState(m.state);
     renderEvents(); renderIncident(); scheduleRender();
   }
@@ -92,7 +92,7 @@
     renderFrame = null;
     renderRisk(); renderIncident(); renderEvents();
     const demo = $("#btn-demo");
-    if (demo) demo.textContent = rigBusy() ? "■ Simulate · AC stop" : "▶ Simulate · AC start/stop";
+    if (demo) demo.textContent = rigBusy() ? "■ AC rig · stop" : "▶ AC rig · start/stop";
     window.ReWatchRisk?.update(S);
     window.ReWatchTopology?.update(S);
     window.ReWatchDevices?.update(S);
@@ -220,8 +220,8 @@
     const fresh = S.conn === "live" && S.mqtt;
     const sigCol = BANDS[S.band] || "#38bdf8";
     g.fillStyle = sigCol;
-    if (!fresh) { oledText(g, "ReWatch", 2, 2); oledText(g, "link lost", 34, 30); drawZ(g); return; }
-    g.font = "bold 8px monospace"; oledText(g, "ReWatch", 0, 1);
+    if (!fresh) { oledText(g, "ReWatch(Iot)", 2, 2); oledText(g, "link lost", 34, 30); drawZ(g); return; }
+    g.font = "bold 8px monospace"; oledText(g, "ReWatch(Iot)", 0, 1);
     g.fillRect(0, 10, 128, 1);
     const order = ["core", "sentinel", "herald", "rig"], lab = ["P4", "3A", "3B", "RG"];
     for (let i = 0; i < 4; i++) {
@@ -276,11 +276,11 @@
     const incidents = report.incidents || [];
     const devices = report.devices || [];
     const lines = [];
-    lines.push("# ReWatch IoT — evidence export");
+    lines.push("# ReWatch(Iot) — evidence export");
     lines.push("");
     lines.push(`- generated: ${stamp}`);
     lines.push(`- source: ${location.origin}/api/report (last ${report.hours || 5} hours)`);
-    lines.push(`- mode: ${report.simulation ? "simulation (synthetic)" : "live"} · MQTT broker: ${S.mqtt ? "connected" : "not connected"}`);
+    lines.push(`- mode: ${report.simulation ? "Black Hat (generated)" : "live"} · MQTT broker: ${S.mqtt ? "connected" : "not connected"}`);
     lines.push(`- band: ${S.band} · score: ${Math.round(S.score)}/100 · open incident: ${S.incident && S.incident.state !== "resolved" ? S.incident.id : "none"}`);
     lines.push("");
     lines.push("## Incidents");
@@ -322,7 +322,7 @@
     lines.push("- SMTP acceptance is not delivery confirmation; the transport only reports the server accepted the message.");
     lines.push("- Only traffic the Sentinel can observe is analysed; on a plain switch that needs SPAN/TAP or a mirrored port.");
     lines.push("- Reported firmware strings and IPs are device-reported, not attested.");
-    if (report.simulation) lines.push("- This export was produced by the simulation: the devices and events are synthetic.");
+    if (report.simulation) lines.push("- This export was produced by Black Hat: the devices and events are generated, not physical network evidence.");
     lines.push("");
     const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);

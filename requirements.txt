@@ -1,4 +1,4 @@
-# ReWatch node services (shared). Install into /opt/rewatch/venv.
+# ReWatch(Iot) node services (shared). Install into /opt/rewatch/venv.
 paho-mqtt==2.1.0
 aiohttp==3.14.5
 aiomqtt==2.5.1

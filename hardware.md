@@ -1,29 +1,30 @@
 # Hardware reference
 
-**Last updated: 2026-10-21 · Status: intended assembly; C3 upload verified, full hardware deployment unvalidated.**
+**Last updated: 2026-10-26**
 
-ReWatch is presented video-demo-first. Software/demo output is not evidence of a
-working physical installation. All images below are **illustrations, not photographs**;
-the topology describes intended roles, not a measured or tested deployment.
+ReWatch(Iot) separates network observation, local decision-making and alert delivery
+across three Raspberry Pis, with a USB-connected state indicator. The diagrams
+below describe component roles and wiring; see [deployment acceptance](#deployment-acceptance)
+for recorded hardware checks and outstanding validation.
 
-## Intended topology and wiring
+## Deployment topology and wiring
 
-![Illustrated proposed network and indicator wiring](assets/hardware/diagram.svg)
+![ReWatch(Iot) network architecture and indicator wiring](assets/hardware/diagram.svg)
 
-| Device | Intended role / connection | Validation still needed |
+| Device | Role / connection | Installation checks |
 | --- | --- | --- |
 | Raspberry Pi 4 Core | Ethernet to LAN; broker, scoring/dashboard and response; USB to C3 | Power budget, USB enumeration, serial delivery, sustained load |
 | Raspberry Pi 3 Sentinel | Ethernet observation node; USB drive for storage | Capture visibility, drive mount and retention, power stability |
 | Raspberry Pi 3 Herald | Ethernet alert node; TL-WN722N Wi-Fi SMTP uplink | Actual interface mapping, routes, mail delivery |
 | Switch / router | Connect nodes and the authorized test LAN | Mirror/SPAN support or a suitable TAP; routing policy |
-| USB drive | Proposed Sentinel storage, not a backup guarantee | Format, permissions, mount persistence and capacity |
+| USB drive | Sentinel evidence storage, not a backup guarantee | Format, permissions, mount persistence and capacity |
 | AC600 USB adapter | Core Wi-Fi HTTP verification link | Exact chipset/revision, Linux driver and association |
 | TL-WN722N USB adapter | Herald Wi-Fi SMTP connection | Exact hardware revision, driver and association |
 | ESP32-C3 + OLED + pixel | Core USB serial indicator | Board pinout, OLED address, pixel type and supply |
-| ESP32-WROOM rig | USB-powered, Wi-Fi-connected synthetic room controller | Firmware upload, connectivity and safe demo-only operation |
+| ESP32-WROOM rig | Black Hat USB-powered, Wi-Fi-connected room model | Firmware upload, connectivity and exercise isolation |
 
-Adapter placement above is an assembly proposal, not an assertion that installed
-interfaces match it. Map real adapters to interface names before deployment.
+Map the adapters above to their actual interface names before deployment; USB
+enumeration and operating-system naming can differ between machines.
 
 ### Firmware-grounded indicator pins
 
@@ -48,8 +49,8 @@ the Pi USB port or C3 regulator can power a strip. Use suitable independent Pi
 supplies; validate USB-drive and adapter load, cables and brownout behavior.
 
 The [WROOM firmware](firmware/esp32-wroom-rig/src/main.cpp) uses GPIO2 for its
-onboard LED and GPIO0 (BOOT, input pull-up) to toggle the Room-1 spike. It simulates
-room devices; it is **not** an AC mains controller. No relay or mains wiring is
+onboard LED and GPIO0 (BOOT, input pull-up) to toggle the Room-1 spike. This Black Hat
+rig models room devices; it is **not** an AC mains controller. No relay or mains wiring is
 specified here. Keep the rig off and aside when using real building IoT devices.
 
 ## Observation and deployment limits
@@ -76,27 +77,26 @@ specified here. Keep the rig off and aside when using real building IoT devices.
   hostname/origin, and configure the application accordingly. A `.local` name
   alone does not provide TLS or trust.
 
-## Device-photo slots
+## Hardware components
 
-![Labeled schematic placeholders for all nine device groups, not photographs](assets/hardware/all-devices.svg)
+![ReWatch(Iot) hardware component reference](assets/hardware/all-devices.svg)
 
-These filenames are **future evidence slots**, not links to missing images. Add
-real, sanitized photographs under `assets/hardware/` and replace the relevant
-placeholder only after assembly. Include board revision, date and what was tested
-in the caption; adding a photo alone does not validate operation.
+The component diagram is a schematic reference, not a photograph or an electrical
+layout. Use the following role map when assembling and documenting an installation.
 
-| Subject | Future filename |
+| Component | System role |
 | --- | --- |
-| Pi 4 Core | `pi4-core-photo.jpg` |
-| Pi 3 Sentinel | `pi3-sentinel-photo.jpg` |
-| Pi 3 Herald | `pi3-herald-photo.jpg` |
-| Switch / router | `switch-router-photo.jpg` |
-| USB drive | `usb-drive-photo.jpg` |
-| AC600 adapter, revision label | `ac600-photo.jpg` |
-| WN722N adapter, revision label | `wn722n-photo.jpg` |
-| C3 + OLED + pixel, visible wiring | `c3-oled-pixel-photo.jpg` |
-| WROOM rig | `wroom-rig-photo.jpg` |
+| Pi 4 Core | MQTT broker, threat engine, dashboard and verification |
+| Pi 3 Sentinel | Network observation and JSONL evidence collection |
+| Pi 3 Herald | SMTP alert and summary delivery |
+| Switch / router | Authorized LAN connectivity and mirrored observation path |
+| USB drive | Sentinel evidence retention |
+| AC600 adapter | Core HTTP verification interface |
+| TL-WN722N adapter | Herald SMTP uplink |
+| C3 + OLED + pixel | USB-linked score, band and incident indication |
+| WROOM rig | Black Hat four-room AC scenario model |
 
+For installation photographs, record board revisions, dates and completed checks.
 Remove SSIDs, credentials, personal labels and identifying network details before
 publishing. Do not commit secrets or private keys.
 
@@ -114,19 +114,19 @@ indicates a response state, not proof that network isolation succeeded.
 | ![Illustrated red LED](assets/hardware/led-red.svg) | Critical; 4 Hz red blink |
 | ![Illustrated purple LED](assets/hardware/led-purple.svg) | Unacknowledged → automated response; 1 Hz purple on/off blink |
 
-## Hardware evidence to collect later
+## Deployment acceptance
 
 Record the actual bill of materials/revisions and power supplies, wiring photos,
 firmware build identifiers, interface/driver inventory, capture-path tests,
 indicator/link-loss behavior, storage persistence, alert delivery, trusted HTTPS
 passkey access, and the precise scope of any response. Until those checks are
-performed and recorded, this page remains an **unvalidated assembly reference**.
+performed and recorded, a complete physical deployment has not been validated.
 
 ### Partial bench evidence — 21 October 2026
 
 The connected ESP32-C3 was identified over a CP2102 UART bridge, and the
 `esp32-c3-uart` environment uploaded successfully with flash hash verification.
-The local demo serial bridge was started at 115200 baud. This establishes an
+The Black Hat USB bridge was started at 115200 baud. This establishes an
 upload/host link, **not** visual verification of the OLED/pixel or a tested
 three-Pi deployment. Verify display output on the physical board separately.
 
@@ -136,7 +136,7 @@ Radio placement is **Core: AC600**, **Herald: TL-WN722N**; Sentinel's USB
 attachment here is its evidence storage, not an implied extra Wi-Fi adapter.
 Validate interface names and routes on the actual machines.
 
-The WROOM board demonstrates AC behavior only. Cameras, doors, plugs, lights,
+The Black Hat WROOM rig models AC behavior only. Cameras, doors, plugs, lights,
 fans and sensors require explicitly supported, opted-in MQTT bridge capability
 profiles and independent device-specific checks. A device label or capability
 advertisement is not demonstrated compatibility, native ONVIF/Matter support,

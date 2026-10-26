@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ReWatch indicator bridge — Pi 4 USB -> ESP32-C3 mini (NeoPixel + OLED).
+"""ReWatch(Iot) indicator bridge — Pi 4 USB -> ESP32-C3 mini (NeoPixel + OLED).
 
 Reads the retained `rewatch/threat/state` and writes one JSON line per 100 ms
 down the USB serial link (115200 baud):

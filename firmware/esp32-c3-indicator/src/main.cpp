@@ -1,4 +1,4 @@
-// ReWatch — ESP32-C3 indicator.
+// ReWatch(Iot) — ESP32-C3 indicator.
 //
 // The visible state of the appliance. The Pi 4 writes newline-delimited JSON
 // down USB (~10 Hz); this board renders the score, the band, the fleet, a
@@ -236,7 +236,7 @@ void boot_animation() {
   while (millis() - t0 < TOT) {
     uint32_t e = millis() - t0, look = OPN + L + Rr + C, blink = look + BL;
     oled.clearDisplay(); oled.setTextColor(SSD1306_WHITE); oled.setTextSize(1);
-    oled.setCursor(40, 2); oled.print(F("ReWatch"));
+    oled.setCursor(40, 2); oled.print(F("ReWatch(Iot)"));
     if (e < OPN) draw_eyes(0, float(e) / OPN * (float(e) / OPN));
     else if (e < OPN + L) draw_eyes(-smooth(float(e - OPN) / L), 1);
     else if (e < OPN + L + Rr) draw_eyes(-1 + 2 * smooth(float(e - OPN - L) / Rr), 1);
@@ -261,7 +261,7 @@ void draw_lid(int cx, int cy, int r) {
 }
 void draw_lost() {
   oled.setTextColor(SSD1306_WHITE); oled.setTextSize(1);
-  oled.setCursor(40, 2); oled.print(F("ReWatch"));
+  oled.setCursor(40, 2); oled.print(F("ReWatch(Iot)"));
   draw_lid(40, 36, 15); draw_lid(88, 36, 15);
   oled.setCursor(108, 14); oled.print(F("z")); oled.setCursor(118, 8); oled.print(F("z"));
   const char *cap = g.have_data ? "link lost - asleep" : "waiting for data";
@@ -305,7 +305,7 @@ void draw() {
   if (!oled_ok) return;  // begin() may fail before a framebuffer is allocated
   oled.clearDisplay(); oled.setTextColor(SSD1306_WHITE);
   if (link_lost()) { draw_lost(); oled.display(); return; }
-  oled.setTextSize(1); oled.setCursor(0, 0); oled.print(F("ReWatch"));
+  oled.setTextSize(1); oled.setCursor(0, 0); oled.print(F("ReWatch(Iot)"));
   if (g.cd >= 0) { char cd[8]; snprintf(cd, sizeof(cd), "%3ds", g.cd); oled.setCursor(98, 0); oled.print(cd); }
   oled.drawLine(0, 10, OLED_W - 1, 10, SSD1306_WHITE);
   draw_nodes(12);

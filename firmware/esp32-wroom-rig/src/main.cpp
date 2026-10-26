@@ -1,4 +1,4 @@
-// ReWatch — ESP32-WROOM room rig.
+// ReWatch(Iot) — ESP32-WROOM room rig.
 //
 // Four AC controllers for rooms 1-4, modelled as real devices on the IoT Wi-Fi.
 // Each one:
@@ -172,7 +172,7 @@ void setup() {
   mqtt.setCallback(on_mqtt);
   mqtt.setBufferSize(512);
   http.on("/status", handle_status);
-  http.on("/", []() { http.send(200, "text/plain", "ReWatch room rig. GET /status for JSON."); });
+  http.on("/", []() { http.send(200, "text/plain", "ReWatch(Iot) room rig. GET /status for JSON."); });
   http.begin();
 }
 
