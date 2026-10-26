@@ -4,16 +4,31 @@
 <p align="center"><b>Open-source IoT monitoring. Local decisions. An operator in the loop.</b></p>
 <p align="center"><a href="install.md">Installation</a> · <a href="hardware.md">Hardware</a> · <a href="https://youtube.com">▶ Video Demo</a> · <a href="SECURITY.md">Security</a></p>
 
-## Overview
+## Abstract
 
-ReWatch(Iot) combines network observations and device telemetry into a shared risk
-score, incident alerts and capability-approved controls. Reproduce it with the
-documented hardware, or explore generated scenarios in the separate **Black Hat
-workspace**.
+**Problem:** Building IoT networks are nearly invisible to operators. Abnormal device
+conditions and odd network activity surface late, cloud dashboards keep the evidence and
+the ownership elsewhere, and there is no local record of what was noticed, by whom, or
+when.
 
-**Sentinel** observes → **Core** assesses → **Herald** notifies.
-The browser supports operator acknowledgement, while an enclosed ESP32-C3
-provides an OLED/LED status display.
+**Solution:** ReWatch(Iot) is a reproducible Apache-2.0 stack for an authorized network.
+**Sentinel** observes traffic and telemetry, **Core** scores conditions and opens
+incidents locally, and **Herald** notifies. One risk picture appears in the browser and
+on the enclosed OLED/LED indicator; the operator acknowledges before any configured
+response, and JSONL/SQLite evidence stays on hardware they control. A separate **Black
+Hat workspace** rehearses the same workflow with generated data.
+
+## Architecture
+
+![ReWatch(Iot) hardware architecture: SPAN/TAP feed to a Pi 3 Sentinel writing USB evidence, Pi 4 Core hosting the MQTT broker, scoring and dashboard, Pi 3 Herald sending SMTP, an enclosure with the ESP32-C3 OLED/LED indicator, an ESP32-WROOM Black Hat rig, and a laptop browser for operator acknowledgement.](assets/architecture.svg)
+
+- **Three Pis on an authorized LAN:** Sentinel captures the mirrored/TAP feed and writes
+  USB evidence; Core hosts the broker, scoring, dashboard and control requests; Herald
+  turns incidents into SMTP notifications.
+- **Enclosure:** the ESP32-C3 renders engine state over Core serial (default) or optional
+  MQTT; the WROOM board models four AC rooms over plain Wi-Fi MQTT — no mains wiring.
+- **Laptop = browser only:** dashboards, acknowledgement and capability-checked requests;
+  USB is used temporarily for flashing.
 
 ## Workflow
 
