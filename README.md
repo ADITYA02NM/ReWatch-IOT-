@@ -20,7 +20,7 @@ Hat workspace** rehearses the same workflow with generated data.
 
 ## Architecture
 
-![ReWatch(Iot) hardware architecture, animated: mirrored SPAN/TAP frames reach a Pi 3 Sentinel writing USB evidence; Ethernet and MQTT reach a Pi 4 Core hosting broker, scoring and the dashboard; the laptop exchanges HTTP/WebSocket traffic; a RED incident travels to a Pi 3 Herald attempting SMTP where acceptance is not delivery; Core feeds an enclosure where an ESP32-C3 OLED/LED cycles band state and an ESP32-WROOM Black Hat rig uses plain Wi-Fi MQTT. Moving packets show how data travels.](assets/architecture.svg)
+![ReWatch(Iot) hardware architecture, animated left to right: a network switch feeds a Pi 3 Sentinel in monitor mode; IDS events reach a Pi 4 Core hosting rules, database and dashboard; alerts travel to a Pi 3 Herald attempting SMTP where acceptance is not delivery. Below, a laptop exchanges HTTP/WebSocket traffic and acknowledgements with Core, and a tamper-evident enclosure holds an ESP32-WROOM-32 room rig with OLED and pixel status plus a USB Wi-Fi antenna, next to an ESP32-C3 environmental monitor with a trace antenna; serial and Wi-Fi frames rise to the Sentinel. Moving packets show how data travels.](assets/architecture.svg)
 
 - **Three Pis on an authorized LAN:** Sentinel captures the mirrored/TAP feed and writes
   USB evidence; Core hosts the broker, scoring, dashboard and control requests; Herald
