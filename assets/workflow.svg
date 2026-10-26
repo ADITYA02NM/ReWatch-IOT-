@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="650" viewBox="0 0 1120 650" role="img" aria-labelledby="title desc">
+  <title id="title">ReWatch observation, incident and response workflow</title>
+  <desc id="desc">Sentinel network observations and device telemetry reach Core over MQTT. Core updates the dashboard and enclosure indicator. RED incidents trigger Herald e-mail and an acknowledgement window. Acknowledgement cancels automatic escalation; timeout attempts the configured response. Verify the outcome independently. Black Hat generated scenarios are separate from live monitoring.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#7dd3fc"/></marker>
+    <style>
+      text{font-family:Arial,Helvetica,sans-serif;fill:#e2e8f0}
+      .heading{font-size:22px;font-weight:700}.label{font-size:18px;font-weight:700}.body{font-size:16px;fill:#cbd5e1}.small{font-size:14px;fill:#cbd5e1}
+      .box{fill:#122439;stroke:#38546b;stroke-width:2}.flow{fill:none;stroke:#7dd3fc;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1120" height="650" rx="18" fill="#081422"/>
+  <text x="40" y="46" class="heading">REWATCH / FROM OBSERVATION TO RESPONSE</text>
+  <text x="40" y="74" class="body">Local monitoring with a visible operator decision point</text>
+
+  <rect x="40" y="108" width="260" height="116" rx="12" class="box"/>
+  <text x="60" y="140" class="label">1 · Observe</text>
+  <text x="60" y="170" class="body">Sentinel network events</text>
+  <text x="60" y="196" class="body">+ device telemetry</text>
+
+  <path d="M300 166H400" class="flow"/>
+  <text x="318" y="151" class="small">MQTT</text>
+  <rect x="400" y="108" width="280" height="116" rx="12" class="box"/>
+  <text x="420" y="140" class="label">2 · Assess / Core</text>
+  <text x="420" y="170" class="body">Risk score + conditions</text>
+  <text x="420" y="196" class="body">Incident state + evidence</text>
+
+  <path d="M680 166H790" class="flow"/>
+  <rect x="790" y="108" width="290" height="116" rx="12" class="box"/>
+  <text x="810" y="140" class="label">Live visibility</text>
+  <text x="810" y="170" class="body">Browser dashboard / reports</text>
+  <text x="810" y="196" class="body">Enclosed C3 OLED + LED*</text>
+
+  <path d="M540 224V282" class="flow"/>
+  <text x="555" y="259" class="small">RED incident</text>
+  <rect x="400" y="282" width="280" height="100" rx="12" class="box"/>
+  <text x="420" y="315" class="label">3 · Await operator ACK</text>
+  <text x="420" y="346" class="body">Configured deadline</text>
+
+  <path d="M680 332H790" class="flow"/>
+  <rect x="790" y="282" width="290" height="100" rx="12" class="box"/>
+  <text x="810" y="315" class="label">Herald / Notify</text>
+  <text x="810" y="346" class="body">Attempt SMTP notification</text>
+
+  <path d="M470 382V418H280V450" class="flow"/>
+  <text x="300" y="410" class="small">ACK before deadline</text>
+  <path d="M610 382V418H820V450" class="flow"/>
+  <text x="710" y="410" class="small">No ACK / timeout</text>
+
+  <rect x="100" y="450" width="360" height="100" rx="12" class="box"/>
+  <text x="120" y="482" class="label">Operator takes ownership</text>
+  <text x="120" y="512" class="body">Cancel automatic escalation</text>
+  <rect x="640" y="450" width="360" height="100" rx="12" class="box"/>
+  <text x="660" y="482" class="label">4 · Attempt configured response</text>
+  <text x="660" y="512" class="body">Permitted action; verify outcome</text>
+
+  <text x="40" y="588" class="small">* C3: serial by default; optional MQTT has payload and fleet-state limits. See the firmware guide.</text>
+  <text x="40" y="615" class="small">Black Hat = separate generated scenarios. A response request is not confirmation of physical actuation.</text>
+</svg>
