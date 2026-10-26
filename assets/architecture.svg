@@ -1,151 +1,372 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="780" viewBox="0 0 1160 780" role="img" aria-labelledby="title desc">
-  <title id="title">ReWatch(Iot) hardware architecture and data flow</title>
-  <desc id="desc">Illustration of the documented hardware, not photographs. A switch or router on an authorized LAN provides a SPAN, TAP or mirrored feed to a Pi 3 Sentinel, which writes JSONL evidence to USB. The Pi 4 Core hosts the MQTT broker, scoring, dashboard and SQLite evidence and connects by Ethernet. The Pi 3 Herald subscribes to incidents and sends SMTP notifications, where relay acceptance is not inbox delivery. A laptop on the same LAN uses only a browser for dashboards, acknowledgement and capability-checked control requests. The enclosure contains an ESP32-C3 that renders engine state over Core serial by default or optional MQTT, with an OLED and LED. An ESP32-WROOM Black Hat rig models four AC rooms over plain unauthenticated Wi-Fi MQTT and never switches mains power.</desc>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#7dd3fc"/></marker>
-    <marker id="dasharrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#94a3b8"/></marker>
-    <style>
-      text{font-family:Arial,Helvetica,sans-serif;fill:#e2e8f0}
-      .heading{font-size:22px;font-weight:700}.sub{font-size:15px;fill:#94a3b8}
-      .label{font-size:16px;font-weight:700}.body{font-size:13px;fill:#cbd5e1}.small{font-size:12px;fill:#94a3b8}.note{font-size:13px;fill:#cbd5e1}
-      .box{fill:#122439;stroke:#38546b;stroke-width:2}.flow{fill:none;stroke:#7dd3fc;stroke-width:2;marker-end:url(#arrow)}
-      .net{fill:none;stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#dasharrow)}
-      .pcb{fill:#2e7d4f;stroke:#1c5733;stroke-width:2}.chip{fill:#1d2a20}.port{fill:#cfd6dd;stroke:#8fa1b3}.hdr{fill:#d9b64a}
-      .case{fill:#1e293b;stroke:#64748b;stroke-width:1.5}
-    </style>
-  </defs>
-  <rect width="1160" height="780" rx="18" fill="#081422"/>
-  <text x="36" y="42" class="heading">ReWatch(Iot) / SYSTEM ARCHITECTURE</text>
-  <text x="36" y="68" class="sub">Authorized LAN observation → local scoring → operator-visible response</text>
-
-  <!-- switch -->
-  <rect x="430" y="96" width="300" height="72" rx="12" class="box"/>
-  <text x="580" y="126" text-anchor="middle" class="label">Switch / router · authorized LAN</text>
-  <text x="580" y="150" text-anchor="middle" class="small">SPAN / TAP / mirror port feeds capture</text>
-
-  <!-- network links -->
-  <path d="M540 168 V204 H215 V236" class="net"/>
-  <text x="238" y="198" class="small">mirrored traffic</text>
-  <path d="M580 168 V236" class="flow"/>
-  <text x="594" y="204" class="small">Ethernet · MQTT</text>
-  <path d="M620 168 V204 H945 V236" class="net"/>
-  <text x="820" y="198" class="small">LAN route for SMTP</text>
-
-  <!-- Sentinel -->
-  <rect x="60" y="240" width="300" height="200" rx="12" class="box"/>
-  <text x="80" y="270" class="label">Pi 3 · SENTINEL</text>
-  <g transform="translate(80,286)">
-    <rect width="130" height="86" rx="6" class="pcb"/>
-    <rect x="10" y="6" width="110" height="7" rx="2" class="hdr"/>
-    <rect x="44" y="30" width="42" height="36" rx="3" class="chip"/>
-    <rect x="112" y="20" width="22" height="18" rx="2" class="port"/>
-    <rect x="112" y="44" width="22" height="16" rx="2" class="port"/>
-    <rect x="112" y="64" width="22" height="16" rx="2" class="port"/>
-    <circle cx="18" cy="74" r="5" fill="#0b1a12"/>
-  </g>
-  <text x="230" y="304" class="body">Observes SPAN/TAP feed</text>
-  <text x="230" y="326" class="body">detects scans, floods,</text>
-  <text x="230" y="348" class="body">new devices</text>
-  <rect x="80" y="386" width="44" height="24" rx="4" fill="#1d2a20" stroke="#64748b"/>
-  <text x="132" y="403" class="small">USB evidence · /mnt/rewatch-usb</text>
-  <text x="80" y="428" class="small">JSONL logs · local fallback if unmounted</text>
-
-  <!-- Core -->
-  <rect x="430" y="240" width="300" height="200" rx="12" class="box"/>
-  <text x="450" y="270" class="label">Pi 4 · CORE</text>
-  <g transform="translate(450,286)">
-    <rect width="130" height="86" rx="6" class="pcb"/>
-    <rect x="10" y="6" width="110" height="7" rx="2" class="hdr"/>
-    <rect x="40" y="28" width="50" height="40" rx="3" class="chip"/>
-    <rect x="112" y="20" width="22" height="18" rx="2" class="port"/>
-    <rect x="112" y="44" width="22" height="16" rx="2" class="port"/>
-    <rect x="112" y="64" width="22" height="16" rx="2" class="port"/>
-    <circle cx="18" cy="74" r="5" fill="#0b1a12"/>
-  </g>
-  <text x="600" y="304" class="body">MQTT broker · scoring</text>
-  <text x="600" y="326" class="body">dashboard · incidents</text>
-  <text x="600" y="348" class="body">control requests (202)</text>
-  <rect x="450" y="386" width="56" height="20" rx="4" fill="#1d2a20" stroke="#64748b"/>
-  <text x="514" y="401" class="small">AC600 · HTTP verify</text>
-  <text x="450" y="428" class="small">SQLite evidence · anonymous LAN MQTT by default</text>
-
-  <!-- Herald -->
-  <rect x="800" y="240" width="300" height="200" rx="12" class="box"/>
-  <text x="820" y="270" class="label">Pi 3 · HERALD</text>
-  <g transform="translate(820,286)">
-    <rect width="130" height="86" rx="6" class="pcb"/>
-    <rect x="10" y="6" width="110" height="7" rx="2" class="hdr"/>
-    <rect x="44" y="30" width="42" height="36" rx="3" class="chip"/>
-    <rect x="112" y="20" width="22" height="18" rx="2" class="port"/>
-    <rect x="112" y="44" width="22" height="16" rx="2" class="port"/>
-    <rect x="112" y="64" width="22" height="16" rx="2" class="port"/>
-    <circle cx="18" cy="74" r="5" fill="#0b1a12"/>
-  </g>
-  <text x="970" y="304" class="body">Subscribes to Core</text>
-  <text x="970" y="326" class="body">incidents over MQTT</text>
-  <text x="970" y="348" class="body">sends SMTP alerts</text>
-  <rect x="820" y="386" width="34" height="40" rx="4" fill="#1d2a20" stroke="#64748b"/>
-  <line x1="837" y1="386" x2="837" y2="360" stroke="#8fa1b3" stroke-width="3"/>
-  <text x="862" y="404" class="small">WN722N uplink</text>
-  <text x="862" y="424" class="small">accepted ≠ delivery</text>
-
-  <!-- laptop -->
-  <rect x="60" y="520" width="280" height="170" rx="12" class="box"/>
-  <text x="80" y="550" class="label">Laptop · browser only</text>
-  <g transform="translate(96,566)">
-    <rect width="110" height="70" rx="5" class="case"/>
-    <rect x="7" y="7" width="96" height="52" rx="3" fill="#0f2740"/>
-    <path d="M40 70 h30 l8 14 h-46 Z" fill="#64748b"/>
-    <rect x="24" y="84" width="62" height="6" rx="3" fill="#94a3b8"/>
-  </g>
-  <text x="220" y="586" class="body">Dashboards,</text>
-  <text x="220" y="606" class="body">ACK, permitted</text>
-  <text x="220" y="626" class="body">control requests</text>
-  <text x="80" y="674" class="small">USB only for temporary flashing</text>
-
-  <!-- enclosure -->
-  <rect x="380" y="520" width="360" height="170" rx="12" class="box"/>
-  <text x="400" y="550" class="label">Enclosure · ESP32-C3 indicator</text>
-  <rect x="400" y="564" width="320" height="88" rx="8" fill="none" stroke="#64748b" stroke-dasharray="6 4"/>
-  <g transform="translate(414,578)">
-    <rect width="72" height="52" rx="5" fill="#25608a" stroke="#173f5c" stroke-width="2"/>
-    <rect x="16" y="12" width="34" height="26" rx="3" fill="#b9c4cd"/>
-    <rect x="8" y="42" width="56" height="6" rx="2" class="hdr"/>
-  </g>
-  <g transform="translate(500,578)">
-    <rect width="76" height="52" rx="5" fill="#0b1a2b" stroke="#3b82c4"/>
-    <rect x="8" y="10" width="60" height="8" rx="2" fill="#589aff"/>
-    <rect x="8" y="24" width="44" height="6" rx="2" fill="#589aff"/>
-    <rect x="8" y="36" width="52" height="6" rx="2" fill="#589aff"/>
-  </g>
-  <circle cx="620" cy="604" r="14" fill="#589aff" stroke="#93c5fd" stroke-width="2"/>
-  <text x="642" y="600" class="small">LED band</text>
-  <text x="642" y="618" class="small">0.5–4 Hz</text>
-  <text x="414" y="596" class="small" fill="#e2e8f0">C3</text>
-  <text x="512" y="596" class="small" fill="#e2e8f0">OLED</text>
-  <text x="400" y="674" class="small">Core serial (default) or optional MQTT · no scoring on the board</text>
-
-  <!-- WROOM rig -->
-  <rect x="775" y="520" width="325" height="170" rx="12" class="box"/>
-  <text x="795" y="550" class="label">ESP32-WROOM · Black Hat rig</text>
-  <g transform="translate(795,566)">
-    <rect width="96" height="58" rx="5" fill="#25608a" stroke="#173f5c" stroke-width="2"/>
-    <rect x="12" y="12" width="40" height="30" rx="3" fill="#b9c4cd"/>
-    <rect x="60" y="8" width="26" height="20" rx="2" fill="#8fa1b3"/>
-  </g>
-  <text x="906" y="584" class="body">4 × modeled AC rooms</text>
-  <text x="906" y="606" class="body">plain Wi-Fi MQTT + HTTP</text>
-  <text x="906" y="628" class="body">software only · no mains</text>
-  <text x="795" y="674" class="small">Isolate this traffic · scenario data, not live monitoring</text>
-
-  <!-- flow arrows: laptop, enclosure, wroom -->
-  <path d="M200 516 V474 H470 V444" class="flow"/>
-  <text x="214" y="470" class="small">HTTPS · WebSocket · ACK</text>
-  <path d="M580 444 V516" class="flow"/>
-  <text x="596" y="486" class="small">serial default / optional MQTT</text>
-  <path d="M700 444 V480 H900 V516" class="net"/>
-  <text x="716" y="474" class="small">Wi-Fi MQTT (unauthenticated)</text>
-
-  <text x="36" y="726" class="note">Illustration of the documented hardware — not photographs; verify actual board revisions and pinouts in the hardware guide.</text>
-  <text x="36" y="752" class="note">Control messages are requests, not proof of actuation · SMTP acceptance is not inbox delivery · keep the anonymous broker off the public Internet.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1000" viewBox="0 0 1280 1000" role="img" aria-labelledby="title desc">
+<title id="title">ReWatch(Iot) hardware architecture with animated data flow</title>
+<desc id="desc">Animated illustration. A LAN switch sends a mirrored SPAN or TAP feed to a Raspberry Pi 3 Sentinel that writes USB evidence; Ethernet and MQTT telemetry reach a Raspberry Pi 4 Core hosting broker, scoring and dashboard; the operator laptop exchanges HTTP and WebSocket traffic with Core; a RED incident travels to a Raspberry Pi 3 Herald which attempts SMTP to a relay, where acceptance does not prove delivery; Core feeds an enclosure over serial by default or optional MQTT to an ESP32-C3 with an OLED and colour LED, while an ESP32-WROOM Black Hat rig talks plain Wi-Fi MQTT. Packets move along every path to show how data travels. Vector illustration of the documented hardware, not photographs.</desc>
+<defs>
+<linearGradient id="pcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a8b5e"/><stop offset="1" stop-color="#1e5a3b"/></linearGradient>
+<linearGradient id="blackpcb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1b23"/><stop offset="1" stop-color="#101016"/></linearGradient>
+<linearGradient id="shield" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d7dde2"/><stop offset="1" stop-color="#aab2b9"/></linearGradient>
+<linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2e7eb"/><stop offset="1" stop-color="#b9c1c8"/></linearGradient>
+<marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 9 4.5 0 9Z" fill="#5e93b8"/></marker>
+<style>text{font-family:'DejaVu Sans',Arial,Helvetica,sans-serif;fill:#e6eef7}.t{font-size:22px;font-weight:700}.sub{font-size:13px;fill:#9fc0d8}.box{fill:#0e2237;stroke:#3b6285;stroke-width:2}.bt{font-size:15px;font-weight:700}.bs{font-size:11px;fill:#9fc0d8}.lab{font-size:11px;fill:#a9c8de;paint-order:stroke;stroke:#071320;stroke-width:4;stroke-linejoin:round}.lab9{font-size:9px;fill:#8fb4cd;paint-order:stroke;stroke:#071320;stroke-width:3;stroke-linejoin:round}.role{font-size:15px;font-weight:700;paint-order:stroke;stroke:#071320;stroke-width:4;stroke-linejoin:round}.role2{font-size:11px;fill:#9fc0d8;paint-order:stroke;stroke:#071320;stroke-width:4;stroke-linejoin:round}.cab{fill:none;stroke:#2c5674;stroke-width:3}.foot{font-size:11px;fill:#86a8c0}</style>
+</defs>
+<rect width="1280" height="1000" rx="18" fill="#071320"/>
+<text x="40" y="38" class="t">ReWatch(Iot) / hardware architecture — live data flow</text>
+<text x="40" y="60" class="sub">Animated: follow the coloured packets to see how data travels between the boards.</text>
+<rect x="40" y="76" width="300" height="104" rx="14" class="box"/>
+<rect x="62" y="96" width="118" height="46" rx="6" fill="#16324a" stroke="#3b6285"/>
+<rect x="68" y="102" width="16" height="11" rx="2" fill="#f5b041"><animate attributeName="opacity" values="1;.25;1" dur="1.00s" begin="0.0s" repeatCount="indefinite"/></rect>
+<rect x="94" y="102" width="16" height="11" rx="2" fill="#58d68d"><animate attributeName="opacity" values="1;.25;1" dur="1.35s" begin="0.2s" repeatCount="indefinite"/></rect>
+<rect x="120" y="102" width="16" height="11" rx="2" fill="#58d68d"><animate attributeName="opacity" values="1;.25;1" dur="1.70s" begin="0.4s" repeatCount="indefinite"/></rect>
+<rect x="146" y="102" width="16" height="11" rx="2" fill="#f5b041"><animate attributeName="opacity" values="1;.25;1" dur="2.05s" begin="0.6000000000000001s" repeatCount="indefinite"/></rect>
+<rect x="68" y="120" width="16" height="11" rx="2" fill="#58d68d"><animate attributeName="opacity" values="1;.25;1" dur="1.00s" begin="0.8s" repeatCount="indefinite"/></rect>
+<rect x="94" y="120" width="16" height="11" rx="2" fill="#58d68d"><animate attributeName="opacity" values="1;.25;1" dur="1.35s" begin="1.0s" repeatCount="indefinite"/></rect>
+<rect x="120" y="120" width="16" height="11" rx="2" fill="#f5b041"><animate attributeName="opacity" values="1;.25;1" dur="1.70s" begin="1.2000000000000002s" repeatCount="indefinite"/></rect>
+<rect x="146" y="120" width="16" height="11" rx="2" fill="#58d68d"><animate attributeName="opacity" values="1;.25;1" dur="2.05s" begin="1.4000000000000001s" repeatCount="indefinite"/></rect>
+<text x="196" y="112" class="bt">LAN switch / router</text>
+<text x="196" y="134" class="bs">SPAN / mirror / TAP feed</text>
+<rect x="900" y="76" width="300" height="104" rx="14" class="box"/>
+<g stroke="#4a7ea6" stroke-width="2" fill="#16324a"><ellipse cx="955" cy="126" rx="34" ry="21"/><ellipse cx="1000" cy="112" rx="40" ry="26"/><ellipse cx="1044" cy="126" rx="30" ry="19"/><rect x="928" y="126" width="132" height="19" rx="9"/></g>
+<text x="1082" y="112" class="bt">SMTP relay</text>
+<text x="1082" y="134" class="bs">accepted &#8800; delivery</text>
+<rect x="97" y="237" width="300" height="235" rx="14" fill="#000" opacity=".35"/>
+<rect x="92" y="230" width="300" height="235" rx="12" fill="url(#pcb)" stroke="#153f2a" stroke-width="2"/>
+<circle cx="107" cy="245" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="377" cy="245" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="107" cy="450" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="377" cy="450" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<rect x="125" y="238" width="234" height="26" rx="3" fill="#0c0c10" stroke="#333"/>
+<rect x="136.0" y="242" width="7" height="8" fill="#d9b34c"/><rect x="136.0" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="147.2" y="242" width="7" height="8" fill="#d9b34c"/><rect x="147.2" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="158.3" y="242" width="7" height="8" fill="#d9b34c"/><rect x="158.3" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="169.5" y="242" width="7" height="8" fill="#d9b34c"/><rect x="169.5" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="180.6" y="242" width="7" height="8" fill="#d9b34c"/><rect x="180.6" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="191.8" y="242" width="7" height="8" fill="#d9b34c"/><rect x="191.8" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="202.9" y="242" width="7" height="8" fill="#d9b34c"/><rect x="202.9" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="214.1" y="242" width="7" height="8" fill="#d9b34c"/><rect x="214.1" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="225.3" y="242" width="7" height="8" fill="#d9b34c"/><rect x="225.3" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="236.4" y="242" width="7" height="8" fill="#d9b34c"/><rect x="236.4" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="247.6" y="242" width="7" height="8" fill="#d9b34c"/><rect x="247.6" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="258.7" y="242" width="7" height="8" fill="#d9b34c"/><rect x="258.7" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="269.9" y="242" width="7" height="8" fill="#d9b34c"/><rect x="269.9" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="281.1" y="242" width="7" height="8" fill="#d9b34c"/><rect x="281.1" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="292.2" y="242" width="7" height="8" fill="#d9b34c"/><rect x="292.2" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="303.4" y="242" width="7" height="8" fill="#d9b34c"/><rect x="303.4" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="314.5" y="242" width="7" height="8" fill="#d9b34c"/><rect x="314.5" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="325.7" y="242" width="7" height="8" fill="#d9b34c"/><rect x="325.7" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="336.8" y="242" width="7" height="8" fill="#d9b34c"/><rect x="336.8" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="348.0" y="242" width="7" height="8" fill="#d9b34c"/><rect x="348.0" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="194" y="296" width="64" height="64" rx="5" fill="url(#shield)" stroke="#8a9299"/>
+<rect x="206" y="308" width="40" height="40" rx="3" fill="#737a80"/>
+<text x="226" y="332" font-size="9" fill="#3f464c" text-anchor="middle" font-weight="700">BCM</text>
+<rect x="270" y="370" width="46" height="34" rx="3" fill="#17171d" stroke="#3a3a44"/>
+<rect x="126" y="286" width="38" height="38" rx="4" fill="#cfd4d9"/>
+<circle cx="134" cy="294" r="4" fill="#24485e"/>
+<circle cx="146" cy="292" r="4" fill="#24485e"/>
+<circle cx="140" cy="304" r="4" fill="#24485e"/>
+<circle cx="152" cy="302" r="4" fill="#24485e"/>
+<circle cx="137" cy="312" r="4" fill="#24485e"/>
+<rect x="122" y="340" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="169" y="371" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="126" y="402" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="173" y="348" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="130" y="379" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="177" y="410" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="134" y="356" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="181" y="387" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="138" y="418" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="185" y="364" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="142" y="395" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="189" y="341" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="146" y="372" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="193" y="403" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="94" y="330" width="14" height="66" rx="2" fill="#e8e6df" stroke="#b9b7ae"/>
+<rect x="94" y="336" width="14" height="4" fill="#3f3f3f"/>
+<rect x="230" y="417" width="62" height="12" rx="2" fill="#e8e6df" stroke="#b9b7ae"/>
+<rect x="132" y="463" width="22" height="12" rx="2" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="184" y="463" width="38" height="16" rx="2" fill="#e08a2e" stroke="#7f878e"/>
+<rect x="246" y="463" width="16" height="16" rx="2" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="362" y="407" width="48" height="54" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="368" y="416" width="36" height="30" rx="3" fill="#1c2b3a"/>
+<circle cx="357" cy="419" r="3.5" fill="#58d68d"><animate attributeName="opacity" values="1;.15;1;.15;1" keyTimes="0;.2;.4;.6;1" dur="1.1s" begin="0ss" repeatCount="indefinite"/></circle>
+<circle cx="357" cy="432" r="3.5" fill="#f5b041"><animate attributeName="opacity" values="1;.15;1;.15;1" keyTimes="0;.2;.4;.6;1" dur="0.9s" begin="0.3s" repeatCount="indefinite"/></circle>
+<rect x="366" y="238" width="44" height="76" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="372" y="244" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<rect x="372" y="278" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<rect x="366" y="322" width="44" height="76" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="372" y="328" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<rect x="372" y="362" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<text x="242" y="196" class="role" text-anchor="middle">Pi 3 · SENTINEL</text>
+<text x="242" y="216" class="role2" text-anchor="middle">observe · JSONL evidence → /mnt/rewatch-usb</text>
+<rect x="460" y="232" width="370" height="245" rx="14" fill="#000" opacity=".35"/>
+<rect x="455" y="225" width="370" height="245" rx="12" fill="url(#pcb)" stroke="#153f2a" stroke-width="2"/>
+<circle cx="470" cy="240" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="810" cy="240" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="470" cy="455" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="810" cy="455" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<rect x="488" y="233" width="304" height="26" rx="3" fill="#0c0c10" stroke="#333"/>
+<rect x="499.0" y="237" width="7" height="8" fill="#d9b34c"/><rect x="499.0" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="513.8" y="237" width="7" height="8" fill="#d9b34c"/><rect x="513.8" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="528.7" y="237" width="7" height="8" fill="#d9b34c"/><rect x="528.7" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="543.5" y="237" width="7" height="8" fill="#d9b34c"/><rect x="543.5" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="558.4" y="237" width="7" height="8" fill="#d9b34c"/><rect x="558.4" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="573.2" y="237" width="7" height="8" fill="#d9b34c"/><rect x="573.2" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="588.1" y="237" width="7" height="8" fill="#d9b34c"/><rect x="588.1" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="602.9" y="237" width="7" height="8" fill="#d9b34c"/><rect x="602.9" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="617.7" y="237" width="7" height="8" fill="#d9b34c"/><rect x="617.7" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="632.6" y="237" width="7" height="8" fill="#d9b34c"/><rect x="632.6" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="647.4" y="237" width="7" height="8" fill="#d9b34c"/><rect x="647.4" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="662.3" y="237" width="7" height="8" fill="#d9b34c"/><rect x="662.3" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="677.1" y="237" width="7" height="8" fill="#d9b34c"/><rect x="677.1" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="691.9" y="237" width="7" height="8" fill="#d9b34c"/><rect x="691.9" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="706.8" y="237" width="7" height="8" fill="#d9b34c"/><rect x="706.8" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="721.6" y="237" width="7" height="8" fill="#d9b34c"/><rect x="721.6" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="736.5" y="237" width="7" height="8" fill="#d9b34c"/><rect x="736.5" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="751.3" y="237" width="7" height="8" fill="#d9b34c"/><rect x="751.3" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="766.2" y="237" width="7" height="8" fill="#d9b34c"/><rect x="766.2" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="781.0" y="237" width="7" height="8" fill="#d9b34c"/><rect x="781.0" y="247" width="7" height="8" fill="#d9b34c"/>
+<rect x="580" y="291" width="64" height="64" rx="5" fill="url(#shield)" stroke="#8a9299"/>
+<rect x="592" y="303" width="40" height="40" rx="3" fill="#737a80"/>
+<text x="612" y="327" font-size="9" fill="#3f464c" text-anchor="middle" font-weight="700">BCM</text>
+<rect x="656" y="365" width="46" height="34" rx="3" fill="#17171d" stroke="#3a3a44"/>
+<rect x="489" y="281" width="38" height="38" rx="4" fill="#cfd4d9"/>
+<circle cx="497" cy="289" r="4" fill="#24485e"/>
+<circle cx="509" cy="287" r="4" fill="#24485e"/>
+<circle cx="503" cy="299" r="4" fill="#24485e"/>
+<circle cx="515" cy="297" r="4" fill="#24485e"/>
+<circle cx="500" cy="307" r="4" fill="#24485e"/>
+<rect x="485" y="335" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="532" y="366" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="579" y="397" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="515" y="428" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="562" y="364" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="498" y="395" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="545" y="426" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="592" y="362" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="528" y="393" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="575" y="424" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="511" y="360" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="558" y="391" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="494" y="422" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="541" y="358" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="457" y="325" width="14" height="66" rx="2" fill="#e8e6df" stroke="#b9b7ae"/>
+<rect x="457" y="331" width="14" height="4" fill="#3f3f3f"/>
+<rect x="669" y="374" width="14" height="64" rx="2" fill="#e8e6df" stroke="#b9b7ae"/>
+<rect x="664" y="297" width="46" height="60" rx="3" fill="#17171d" stroke="#3a3a44"/>
+<rect x="495" y="468" width="24" height="13" rx="2" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="541" y="468" width="20" height="14" rx="2" fill="#e08a2e" stroke="#7f878e"/>
+<rect x="587" y="468" width="20" height="14" rx="2" fill="#e08a2e" stroke="#7f878e"/>
+<rect x="641" y="468" width="16" height="16" rx="2" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="795" y="231" width="48" height="54" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="801" y="240" width="36" height="30" rx="3" fill="#1c2b3a"/>
+<circle cx="790" cy="243" r="3.5" fill="#58d68d"><animate attributeName="opacity" values="1;.15;1;.15;1" keyTimes="0;.2;.4;.6;1" dur="1.1s" begin="0ss" repeatCount="indefinite"/></circle>
+<circle cx="790" cy="256" r="3.5" fill="#f5b041"><animate attributeName="opacity" values="1;.15;1;.15;1" keyTimes="0;.2;.4;.6;1" dur="0.9s" begin="0.3s" repeatCount="indefinite"/></circle>
+<rect x="799" y="295" width="44" height="76" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="805" y="301" width="32" height="30" rx="2" fill="#3f6fd8"/>
+<rect x="805" y="335" width="32" height="30" rx="2" fill="#3f6fd8"/>
+<rect x="799" y="377" width="44" height="76" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="805" y="383" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<rect x="805" y="417" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<text x="640" y="191" class="role" text-anchor="middle">Pi 4 · CORE</text>
+<text x="640" y="211" class="role2" text-anchor="middle">broker · score · dashboard · control requests</text>
+<rect x="905" y="237" width="300" height="235" rx="14" fill="#000" opacity=".35"/>
+<rect x="900" y="230" width="300" height="235" rx="12" fill="url(#pcb)" stroke="#153f2a" stroke-width="2"/>
+<circle cx="915" cy="245" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="1185" cy="245" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="915" cy="450" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<circle cx="1185" cy="450" r="7" fill="#0b1a2b" stroke="#cfae5f" stroke-width="2.5"/>
+<rect x="933" y="238" width="234" height="26" rx="3" fill="#0c0c10" stroke="#333"/>
+<rect x="944.0" y="242" width="7" height="8" fill="#d9b34c"/><rect x="944.0" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="955.2" y="242" width="7" height="8" fill="#d9b34c"/><rect x="955.2" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="966.3" y="242" width="7" height="8" fill="#d9b34c"/><rect x="966.3" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="977.5" y="242" width="7" height="8" fill="#d9b34c"/><rect x="977.5" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="988.6" y="242" width="7" height="8" fill="#d9b34c"/><rect x="988.6" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="999.8" y="242" width="7" height="8" fill="#d9b34c"/><rect x="999.8" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1010.9" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1010.9" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1022.1" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1022.1" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1033.3" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1033.3" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1044.4" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1044.4" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1055.6" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1055.6" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1066.7" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1066.7" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1077.9" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1077.9" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1089.1" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1089.1" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1100.2" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1100.2" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1111.4" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1111.4" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1122.5" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1122.5" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1133.7" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1133.7" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1144.8" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1144.8" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1156.0" y="242" width="7" height="8" fill="#d9b34c"/><rect x="1156.0" y="252" width="7" height="8" fill="#d9b34c"/>
+<rect x="1002" y="296" width="64" height="64" rx="5" fill="url(#shield)" stroke="#8a9299"/>
+<rect x="1014" y="308" width="40" height="40" rx="3" fill="#737a80"/>
+<text x="1034" y="332" font-size="9" fill="#3f464c" text-anchor="middle" font-weight="700">BCM</text>
+<rect x="1078" y="370" width="46" height="34" rx="3" fill="#17171d" stroke="#3a3a44"/>
+<rect x="934" y="286" width="38" height="38" rx="4" fill="#cfd4d9"/>
+<circle cx="942" cy="294" r="4" fill="#24485e"/>
+<circle cx="954" cy="292" r="4" fill="#24485e"/>
+<circle cx="948" cy="304" r="4" fill="#24485e"/>
+<circle cx="960" cy="302" r="4" fill="#24485e"/>
+<circle cx="945" cy="312" r="4" fill="#24485e"/>
+<rect x="930" y="340" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="977" y="371" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="934" y="402" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="981" y="348" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="938" y="379" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="985" y="410" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="942" y="356" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="989" y="387" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="946" y="418" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="993" y="364" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="950" y="395" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="997" y="341" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="954" y="372" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="1001" y="403" width="7" height="5" rx="1" fill="#1c4f35" opacity=".9"/>
+<rect x="902" y="330" width="14" height="66" rx="2" fill="#e8e6df" stroke="#b9b7ae"/>
+<rect x="902" y="336" width="14" height="4" fill="#3f3f3f"/>
+<rect x="1038" y="417" width="62" height="12" rx="2" fill="#e8e6df" stroke="#b9b7ae"/>
+<rect x="940" y="463" width="22" height="12" rx="2" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="992" y="463" width="38" height="16" rx="2" fill="#e08a2e" stroke="#7f878e"/>
+<rect x="1054" y="463" width="16" height="16" rx="2" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="1170" y="407" width="48" height="54" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="1176" y="416" width="36" height="30" rx="3" fill="#1c2b3a"/>
+<circle cx="1165" cy="419" r="3.5" fill="#58d68d"><animate attributeName="opacity" values="1;.15;1;.15;1" keyTimes="0;.2;.4;.6;1" dur="1.1s" begin="0ss" repeatCount="indefinite"/></circle>
+<circle cx="1165" cy="432" r="3.5" fill="#f5b041"><animate attributeName="opacity" values="1;.15;1;.15;1" keyTimes="0;.2;.4;.6;1" dur="0.9s" begin="0.3s" repeatCount="indefinite"/></circle>
+<rect x="1174" y="238" width="44" height="76" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="1180" y="244" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<rect x="1180" y="278" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<rect x="1174" y="322" width="44" height="76" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="1180" y="328" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<rect x="1180" y="362" width="32" height="30" rx="2" fill="#e6e6e6"/>
+<text x="1050" y="196" class="role" text-anchor="middle">Pi 3 · HERALD</text>
+<text x="1050" y="216" class="role2" text-anchor="middle">incidents → SMTP notifications</text>
+<rect x="58" y="300" width="36" height="44" rx="4" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="50" y="310" width="10" height="24" rx="2" fill="#8f979e"/>
+<text x="58" y="362" class="lab9">USB</text>
+<rect x="760" y="470" width="80" height="28" rx="5" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="838" y="477" width="14" height="14" fill="#8f979e"/>
+<text x="800" y="516" class="lab" text-anchor="middle">AC600 · HTTP verify</text>
+<rect x="1216" y="340" width="52" height="22" rx="5" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="1264" y="344" width="12" height="14" fill="#8f979e"/>
+<text x="1216" y="380" class="lab9">WN722N</text>
+<rect x="90" y="756" width="300" height="100" rx="10" fill="#101b29" stroke="#3b6285" stroke-width="2"/>
+<rect x="102" y="768" width="276" height="76" rx="4" fill="#0a1b2d"/>
+<text x="114" y="780" font-size="10" fill="#9fc0d8">ReWatch(Iot) dashboard</text>
+<rect x="114" y="802" width="30" height="34" rx="2" fill="#41d99a"><animate attributeName="height" values="34;30;38;34" dur="4s" repeatCount="indefinite"/><animate attributeName="y" values="802;806;798;802" dur="4s" repeatCount="indefinite"/></rect>
+<rect x="150" y="794" width="30" height="42" rx="2" fill="#f8ce57"><animate attributeName="height" values="42;46;40;42" dur="4s" repeatCount="indefinite"/><animate attributeName="y" values="794;790;796;794" dur="4s" repeatCount="indefinite"/></rect>
+<rect x="186" y="784" width="30" height="52" rx="2" fill="#ff6678"><animate attributeName="height" values="40;52;46;52" dur="4s" repeatCount="indefinite"/><animate attributeName="y" values="796;784;790;796" dur="4s" repeatCount="indefinite"/></rect>
+<rect x="300" y="796" width="66" height="20" rx="10" fill="#4a1f2a" stroke="#ff6678"/>
+<text x="333" y="810" font-size="10" fill="#ff6678" text-anchor="middle" font-weight="700">RED 82</text>
+<rect x="300" y="820" width="66" height="18" rx="4" fill="#23485e" stroke="#7dd3fc"/>
+<text x="333" y="833" font-size="9" fill="#bfe6ff" text-anchor="middle">ACK 20 s</text>
+<circle cx="292" cy="806" r="4" fill="#ff6678"><animate attributeName="opacity" values="1;.2;1" dur="1.2s" repeatCount="indefinite"/></circle>
+<rect x="74" y="856" width="332" height="16" rx="7" fill="#2b3540"/>
+<text x="240" y="898" class="role" text-anchor="middle">LAPTOP · browser only</text>
+<text x="240" y="918" class="role2" text-anchor="middle">dashboard · ACK · capability-checked requests</text>
+<rect x="430" y="560" width="770" height="350" rx="18" fill="#0d1c2e" stroke="#4a7ea6" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="446" y="588" font-size="13" font-weight="700" fill="#7dd3fc">ENCLOSURE · both ESP32s live inside</text>
+<rect x="470" y="640" width="150" height="250" rx="10" fill="url(#blackpcb)" stroke="#2c2c36" stroke-width="2"/>
+<rect x="488" y="656" width="114" height="96" rx="6" fill="url(#shield)" stroke="#99a1a8"/>
+<rect x="576" y="656" width="26" height="24" fill="#0b0b10"/>
+<text x="540" y="702" font-size="12" fill="#454b51" text-anchor="middle" font-weight="700">ESP32-C3</text>
+<text x="540" y="720" font-size="9" fill="#5a6167" text-anchor="middle">RISC-V · Wi-Fi</text>
+<rect x="525" y="764" width="40" height="40" rx="5" fill="#f2f2f2"/>
+<circle cx="545" cy="784" r="13" fill="#41d99a"><animate attributeName="fill" values="#41d99a;#41d99a;#ff6678;#ff6678;#bc8aff;#bc8aff;#f8ce57;#41d99a" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+<rect x="488" y="770" width="34" height="22" rx="3" fill="#2a2a33"/>
+<rect x="570" y="772" width="30" height="56" rx="3" fill="#1b1b22"/>
+<circle cx="476" cy="660" r="2.5" fill="#d9b34c"/><circle cx="614" cy="660" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="682" r="2.5" fill="#d9b34c"/><circle cx="614" cy="682" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="704" r="2.5" fill="#d9b34c"/><circle cx="614" cy="704" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="726" r="2.5" fill="#d9b34c"/><circle cx="614" cy="726" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="748" r="2.5" fill="#d9b34c"/><circle cx="614" cy="748" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="770" r="2.5" fill="#d9b34c"/><circle cx="614" cy="770" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="792" r="2.5" fill="#d9b34c"/><circle cx="614" cy="792" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="814" r="2.5" fill="#d9b34c"/><circle cx="614" cy="814" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="836" r="2.5" fill="#d9b34c"/><circle cx="614" cy="836" r="2.5" fill="#d9b34c"/>
+<circle cx="476" cy="858" r="2.5" fill="#d9b34c"/><circle cx="614" cy="858" r="2.5" fill="#d9b34c"/>
+<circle cx="496" cy="856" r="8" fill="#26262e" stroke="#444"/>
+<circle cx="594" cy="856" r="8" fill="#26262e" stroke="#444"/>
+<rect x="528" y="876" width="36" height="14" rx="3" fill="url(#metal)" stroke="#7f878e"/>
+<text x="545" y="903" class="lab9" text-anchor="middle">ESP32-C3 · enclosed indicator</text>
+<rect x="650" y="640" width="170" height="110" rx="6" fill="#0d1b30" stroke="#2d4a6e" stroke-width="2"/>
+<rect x="664" y="646" width="13" height="10" rx="2" fill="#d9b34c"/>
+<rect x="682" y="646" width="13" height="10" rx="2" fill="#d9b34c"/>
+<rect x="700" y="646" width="13" height="10" rx="2" fill="#d9b34c"/>
+<rect x="718" y="646" width="13" height="10" rx="2" fill="#d9b34c"/>
+<text x="812" y="656" font-size="7" fill="#8fb4cd" text-anchor="end">GND VCC SCL SDA</text>
+<rect x="662" y="672" width="146" height="64" rx="4" fill="#020814" stroke="#1d3a5c"/>
+<text x="735" y="710" font-size="14" font-weight="700" fill="#41d99a" text-anchor="middle" opacity="1">GREEN · NORMAL<animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.32;.34;.98;1" dur="6s" repeatCount="indefinite"/></text>
+<text x="735" y="710" font-size="14" font-weight="700" fill="#ff6678" text-anchor="middle" opacity="0">RED · INCIDENT<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;.32;.34;.64;.66;1" dur="6s" repeatCount="indefinite"/></text>
+<text x="735" y="710" font-size="14" font-weight="700" fill="#bc8aff" text-anchor="middle" opacity="0">PURPLE · RESPOND<animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;.32;.34;.64;.66;1" dur="6s" repeatCount="indefinite"/></text>
+<text x="735" y="772" class="lab9" text-anchor="middle">SSD1306 OLED + pixel</text>
+<circle cx="836" cy="668" r="9" fill="#41d99a"><animate attributeName="fill" values="#41d99a;#41d99a;#ff6678;#ff6678;#bc8aff;#bc8aff;#f8ce57;#41d99a" calcMode="discrete" dur="6s" repeatCount="indefinite"/></circle>
+<text x="836" y="690" class="lab9" text-anchor="middle">pixel</text>
+<rect x="900" y="655" width="260" height="155" rx="10" fill="url(#blackpcb)" stroke="#2c2c36" stroke-width="2"/>
+<rect x="928" y="673" width="177" height="60" rx="5" fill="url(#shield)" stroke="#99a1a8"/>
+<rect x="1047" y="673" width="58" height="28" fill="#0b0b10"/>
+<path d="M1052 694 H1060 V682 H1068 V694 H1076 V682 H1084 V694 H1092 V682 H1100" fill="none" stroke="#d8d8e0" stroke-width="2"/>
+<text x="1000" y="718" font-size="11" fill="#454b51" text-anchor="middle" font-weight="700">ESP-WROOM-32</text>
+<text x="1000" y="730" font-size="8" fill="#5a6167" text-anchor="middle">2.4 GHz Wi-Fi</text>
+<circle cx="932" cy="663" r="2.5" fill="#d9b34c"/><circle cx="932" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="954" cy="663" r="2.5" fill="#d9b34c"/><circle cx="954" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="976" cy="663" r="2.5" fill="#d9b34c"/><circle cx="976" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="998" cy="663" r="2.5" fill="#d9b34c"/><circle cx="998" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="1020" cy="663" r="2.5" fill="#d9b34c"/><circle cx="1020" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="1042" cy="663" r="2.5" fill="#d9b34c"/><circle cx="1042" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="1064" cy="663" r="2.5" fill="#d9b34c"/><circle cx="1064" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="1086" cy="663" r="2.5" fill="#d9b34c"/><circle cx="1086" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="1108" cy="663" r="2.5" fill="#d9b34c"/><circle cx="1108" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="1130" cy="663" r="2.5" fill="#d9b34c"/><circle cx="1130" cy="802" r="2.5" fill="#d9b34c"/>
+<circle cx="1152" cy="663" r="2.5" fill="#d9b34c"/><circle cx="1152" cy="802" r="2.5" fill="#d9b34c"/>
+<rect x="916" y="798" width="34" height="14" rx="3" fill="url(#metal)" stroke="#7f878e"/>
+<rect x="966" y="758" width="16" height="16" rx="3" fill="#26262e"/>
+<rect x="992" y="758" width="16" height="16" rx="3" fill="#26262e"/>
+<rect x="1020" y="758" width="34" height="20" rx="3" fill="#2a2a33"/>
+<circle cx="1090" cy="766" r="5" fill="#4ea8ff"><animate attributeName="opacity" values="1;.2;1" dur="2s" repeatCount="indefinite"/></circle>
+<path d="M1068 660 Q1076 650 1084 660" fill="none" stroke="#7dd3fc" stroke-width="2.5" opacity=".4"><animate attributeName="opacity" values=".25;1;.25" dur="1.4s" begin="0.0s" repeatCount="indefinite"/></path>
+<path d="M1062 652 Q1076 636 1090 652" fill="none" stroke="#7dd3fc" stroke-width="2.5" opacity=".4"><animate attributeName="opacity" values=".25;1;.25" dur="1.4s" begin="0.35s" repeatCount="indefinite"/></path>
+<path d="M1056 644 Q1076 622 1096 644" fill="none" stroke="#7dd3fc" stroke-width="2.5" opacity=".4"><animate attributeName="opacity" values=".25;1;.25" dur="1.4s" begin="0.7s" repeatCount="indefinite"/></path>
+<text x="1030" y="833" class="lab9" text-anchor="middle">ESP32-WROOM · Black Hat 4-room AC model</text>
+<path d="M50 180 V500 H416 V463" class="cab" marker-end="url(#ar)"/>
+<path d="M50 180 V500 H416 V463" fill="none" stroke="#4ea8ff" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<path d="M340 112 H795 V231" class="cab" marker-end="url(#ar)"/>
+<path d="M340 112 H795 V231" fill="none" stroke="#4ea8ff" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<path d="M500 470 V520 H240 V759" class="cab" marker-end="url(#ar)"/>
+<path d="M500 470 V520 H240 V759" fill="none" stroke="#4ea8ff" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<path d="M846 410 H898" class="cab" marker-end="url(#ar)"/>
+<path d="M846 410 H898" fill="none" stroke="#4ea8ff" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<path d="M1185 230 V180" class="cab" marker-end="url(#ar)"/>
+<path d="M1185 230 V180" fill="none" stroke="#4ea8ff" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<path d="M700 470 V610 H545 V637" class="cab" marker-end="url(#ar)"/>
+<path d="M700 470 V610 H545 V637" fill="none" stroke="#4ea8ff" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<path d="M1110 650 C1230 560 950 495 732 471" class="cab" marker-end="url(#ar)"/>
+<path d="M1110 650 C1230 560 950 495 732 471" fill="none" stroke="#4ea8ff" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<path d="M240 756 V520 H500 V470" class="cab" marker-end="url(#ar)"/>
+<path d="M240 756 V520 H500 V470" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-dasharray="10 14" opacity=".85"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.4s" repeatCount="indefinite"/></path>
+<rect x="-7" y="-4.5" width="14" height="9" rx="2" fill="#ffd166" stroke="#eaf6ff" stroke-width="1"><animateMotion path="M50 180 V500 H416 V463" dur="3.0s" begin="0s" repeatCount="indefinite" rotate="auto"/></rect><rect x="-7" y="-4.5" width="14" height="9" rx="2" fill="#ffd166" stroke="#eaf6ff" stroke-width="1"><animateMotion path="M50 180 V500 H416 V463" dur="3.0s" begin="1.5s" repeatCount="indefinite" rotate="auto"/></rect>
+<rect x="-7" y="-4.5" width="14" height="9" rx="2" fill="#4ea8ff" stroke="#eaf6ff" stroke-width="1"><animateMotion path="M340 112 H795 V231" dur="2.8s" begin="0.2s" repeatCount="indefinite" rotate="auto"/></rect><rect x="-7" y="-4.5" width="14" height="9" rx="2" fill="#4ea8ff" stroke="#eaf6ff" stroke-width="1"><animateMotion path="M340 112 H795 V231" dur="2.8s" begin="1.6s" repeatCount="indefinite" rotate="auto"/></rect>
+<circle r="6" fill="#5eead4" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M500 470 V520 H240 V759" dur="2.6s" begin="0.6s" repeatCount="indefinite"/></circle><circle r="6" fill="#5eead4" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M500 470 V520 H240 V759" dur="2.6s" begin="1.9s" repeatCount="indefinite"/></circle>
+<circle r="6" fill="#a78bfa" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M240 756 V520 H500 V470" dur="2.6s" begin="1.2s" repeatCount="indefinite"/></circle>
+<circle r="6" fill="#ff9f5a" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M846 410 H898" dur="2.0s" begin="0.8s" repeatCount="indefinite"/></circle>
+<circle r="6" fill="#41d99a" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M1185 230 V180" dur="1.6s" begin="1.0s" repeatCount="indefinite"/></circle>
+<circle r="6" fill="#5eead4" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M700 470 V610 H545 V637" dur="2.8s" begin="0.3s" repeatCount="indefinite"/></circle><circle r="6" fill="#5eead4" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M700 470 V610 H545 V637" dur="2.8s" begin="1.7s" repeatCount="indefinite"/></circle>
+<circle r="6" fill="#7dd3fc" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M1110 650 C1230 560 950 495 732 471" dur="3.4s" begin="0.5s" repeatCount="indefinite"/></circle><circle r="6" fill="#7dd3fc" stroke="#eaf6ff" stroke-width="1.5"><animateMotion path="M1110 650 C1230 560 950 495 732 471" dur="3.4s" begin="2.2s" repeatCount="indefinite"/></circle>
+<text x="66" y="522" class="lab">SPAN · mirrored frames</text>
+<text x="801" y="152" class="lab">Ethernet · MQTT</text>
+<text x="252" y="600" class="lab">HTTP · WebSocket</text>
+<text x="850" y="434" class="lab9">incident</text>
+<text x="1193" y="205" class="lab9">SMTP · TLS</text>
+<text x="660" y="540" class="lab">serial 115200 (default) · optional MQTT*</text>
+<text x="878" y="500" class="lab">Wi-Fi MQTT · plain, isolated LAN</text>
+<rect x="70" y="940" width="14" height="14" rx="3" fill="#ffd166"/>
+<text x="90" y="951" class="foot">mirrored frames</text>
+<rect x="270" y="940" width="14" height="14" rx="3" fill="#4ea8ff"/>
+<text x="290" y="951" class="foot">Ethernet / MQTT</text>
+<rect x="470" y="940" width="14" height="14" rx="3" fill="#5eead4"/>
+<text x="490" y="951" class="foot">dashboard / indicator</text>
+<rect x="670" y="940" width="14" height="14" rx="3" fill="#ff9f5a"/>
+<text x="690" y="951" class="foot">incident → Herald</text>
+<rect x="870" y="940" width="14" height="14" rx="3" fill="#41d99a"/>
+<text x="890" y="951" class="foot">SMTP accepted</text>
+<rect x="1070" y="940" width="14" height="14" rx="3" fill="#7dd3fc"/>
+<text x="1090" y="951" class="foot">Wi-Fi MQTT (optional)</text>
+<text x="70" y="974" class="foot">Vector illustration of the documented hardware — not photographs. Black Hat WROOM rig models rooms in software (no mains wiring).</text>
+<text x="70" y="992" class="foot">* C3: serial default; optional MQTT has payload/fleet limits. SMTP accepted ≠ delivery · responses are requests, not proof of actuation.</text>
 </svg>
